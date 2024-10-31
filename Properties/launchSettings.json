@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "edaContest": {
+      "commandName": "Project",
+      "commandLineArgs": " -def_file \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\problem.def\" -constraint \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\constraints.txt\" -output \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\solution.def\""
+    }
+  }
+}
