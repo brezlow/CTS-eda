@@ -21,7 +21,7 @@ namespace edaContest
             CircuitData circuitData = reader.ReadCircuitData(circuitFilePath, constraintFilePath);
 
             // 打印 CircuitData 数据
-            //PrintCircuitData(circuitData);
+            // PrintCircuitData(circuitData);
 
             //List<Net> nets = new List<Net>
             //{
@@ -33,7 +33,7 @@ namespace edaContest
             Console.WriteLine("数据加载成功。");
 
             FileWriter writer = new FileWriter();
-            //writer.WriteOutput(outputFilePath, circuitData, nets);
+            // writer.WriteOutput(outputFilePath, circuitData, nets);
 
         }
 

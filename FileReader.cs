@@ -19,7 +19,7 @@ class FileReader
             using (StreamReader sr = new StreamReader(filePath))
             {
                 string line;
-                while ((line = sr.ReadLine()) != null)
+                while ((line = sr.ReadLine()!) != null)
                 {
                     if (line.StartsWith("UNITS DISTANCE MICRONS"))
                     {
@@ -61,7 +61,7 @@ class FileReader
             using (StreamReader sr = new StreamReader(filePath))
             {
                 string line;
-                while ((line = sr.ReadLine()) != null)
+                while ((line = sr.ReadLine()!) != null)
                 {
                     // 解析约束数据
                     var parts = line.Split('=');
@@ -125,7 +125,7 @@ class FileReader
     private void ParseComponents(StreamReader sr, List<FFInstance> ffInstances)
     {
         string line;
-        while ((line = sr.ReadLine()) != null && !line.StartsWith("END COMPONENTS"))
+        while ((line = sr.ReadLine()!) != null && !line.StartsWith("END COMPONENTS"))
         {
             if (line.StartsWith("-"))
             {

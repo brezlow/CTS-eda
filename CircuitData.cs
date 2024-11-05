@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 
+// 电路数据类型, 用于存储电路布局信息
 class CircuitData
 {
     public int Units { get; set; }
@@ -18,3 +19,28 @@ class CircuitData
     public double BufferDelay { get; set; }
 }
 
+class FFInstance
+{
+    public required string Name { get; set; }
+    public (int X, int Y) Position { get; set; }
+}
+
+class BufferInstance
+{
+    public required string Name { get; set; }
+    public (int X, int Y) Position { get; set; }
+}
+
+class Net
+{
+    public string Name { get; set; }
+    public string Source { get; set; }
+    public List<string> Sinks { get; set; }
+
+    public Net(string name, string source, List<string> sinks)
+    {
+        Name = name;
+        Source = source;
+        Sinks = sinks;
+    }
+}
