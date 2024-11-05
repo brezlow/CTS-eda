@@ -31,6 +31,22 @@ class BufferInstance
     public (int X, int Y) Position { get; set; }
 }
 
+public class Node
+{
+    public Node(int X, int Y, double delay, int Id)
+    {
+        Delay = delay;
+        this.Id = Id;
+    }
+
+    public int Id { get; }
+    public int X { get; }
+    public int Y { get; }
+
+    public double Delay { get; set; } // 平均延迟，用于中层聚类的补偿计算
+
+}
+
 class Net
 {
     public string Name { get; set; }
