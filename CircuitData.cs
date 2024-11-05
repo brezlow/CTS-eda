@@ -31,21 +31,28 @@ class BufferInstance
     public (int X, int Y) Position { get; set; }
 }
 
+
+
 public class Node
 {
-    public Node(int X, int Y, double delay, int Id)
+    public Node(int x, int y, double delay, int id, int width, int height)
     {
+        X = x;
+        Y = y;
         Delay = delay;
-        this.Id = Id;
+        Id = id;
+        Width = width;
+        Height = height;
     }
 
     public int Id { get; }
     public int X { get; }
     public int Y { get; }
-
     public double Delay { get; set; } // 平均延迟，用于中层聚类的补偿计算
-
+    public int Width { get; }  // 长方形的宽度
+    public int Height { get; } // 长方形的高度
 }
+
 
 class Net
 {
