@@ -31,8 +31,6 @@ class BufferInstance
     public (int X, int Y) Position { get; set; }
 }
 
-
-
 public class Node
 {
     public Node(int x, int y, double delay, int id, int width, int height)
@@ -52,7 +50,6 @@ public class Node
     public int Width { get; }  // 长方形的宽度
     public int Height { get; } // 长方形的高度
 }
-
 
 class Net
 {

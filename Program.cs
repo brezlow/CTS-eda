@@ -22,6 +22,7 @@ namespace edaContest
             CircuitData circuitData = reader.ReadCircuitData(circuitFilePath, constraintFilePath);
 
             // 获取触发器集合
+            Console.WriteLine($"触发器数目:{circuitData.FFInstances.Count}");
             List<Node> triggers = new List<Node>();
             foreach (var ff in circuitData.FFInstances)
             {
@@ -29,16 +30,15 @@ namespace edaContest
             }
 
             // 创建 KSplittingClustering 实例
-            double alpha = 1.0; // 根据需要设置 alpha 值
+            double alpha = circuitData.MaxFanout; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             int maxNetRC = (int)circuitData.MaxNetRC;
-            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC);
+            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC,maxFanout);
 
-
+            Console.WriteLine("开始执行聚类算法...");
 
             // 执行聚类算法
             List<List<Node>> clusters = kSplitting.ExecuteClustering();
-
 
             // 输出聚类结果
             Console.WriteLine($"聚类团数目: {clusters.Count}");
@@ -51,10 +51,8 @@ namespace edaContest
                 }
             }
 
-
             // FileWriter writer = new FileWriter();
             // writer.WriteOutput(outputFilePath, circuitData, nets);
-
         }
 
         static void PrintCircuitData(CircuitData data)
