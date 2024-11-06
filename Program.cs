@@ -1,4 +1,5 @@
 ﻿using System;
+using KSplittingNamespace;
 
 namespace edaContest
 {
@@ -20,19 +21,38 @@ namespace edaContest
             FileReader reader = new FileReader();
             CircuitData circuitData = reader.ReadCircuitData(circuitFilePath, constraintFilePath);
 
-            // 打印 CircuitData 数据
-            // PrintCircuitData(circuitData);
+            // 获取触发器集合
+            List<Node> triggers = new List<Node>();
+            foreach (var ff in circuitData.FFInstances)
+            {
+                triggers.Add(new Node(ff.Position.X, ff.Position.Y, 0, triggers.Count, circuitData.FFSize.Width, circuitData.FFSize.Height));
+            }
 
-            //List<Net> nets = new List<Net>
-            //{
-            //new Net("net_clk", "CLK", new List<string> { "BUF1" }),
-            //new Net("net_buf1", "BUF1", new List<string> { "BUF2", "BUF3", "BUF4", "BUF5" }),
-            //// 添加其他 net 数据
-            //};
+            // 创建 KSplittingClustering 实例
+            double alpha = 1.0; // 根据需要设置 alpha 值
+            int maxFanout = circuitData.MaxFanout;
+            int maxNetRC = (int)circuitData.MaxNetRC;
+            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC);
 
-            Console.WriteLine("数据加载成功。");
 
-            FileWriter writer = new FileWriter();
+
+            // 执行聚类算法
+            List<List<Node>> clusters = kSplitting.ExecuteClustering();
+
+
+            // 输出聚类结果
+            Console.WriteLine($"聚类团数目: {clusters.Count}");
+            for (int i = 0; i < clusters.Count; i++)
+            {
+                Console.WriteLine($"聚类团 {i + 1}:");
+                foreach (var node in clusters[i])
+                {
+                    Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y})");
+                }
+            }
+
+
+            // FileWriter writer = new FileWriter();
             // writer.WriteOutput(outputFilePath, circuitData, nets);
 
         }

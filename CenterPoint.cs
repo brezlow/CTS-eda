@@ -18,10 +18,10 @@
             int centerY = (int)Math.Round(cluster.Average(node => node.Y));
 
             // 假设缓冲器的尺寸为 (0, 0) 或根据实际情况调整
-            return new Node(X: centerX, Y: centerY, Delay: 0, Id: 0, Width: BufferSize_width, Height: BufferSize_height);
+            return new Node(centerX, centerY, 0, 0, BufferSize_width, BufferSize_height);
         }
 
-        public Node CalculateIntermediateLevelCenterPoint(List<Node> upperCluster, int gamma,int BufferSize_width, int BufferSize_height)
+        public Node CalculateIntermediateLevelCenterPoint(List<Node> upperCluster, int gamma, int BufferSize_width, int BufferSize_height)
         {
             if (upperCluster == null || upperCluster.Count < 2)
                 throw new ArgumentException("聚类团需要至少两个节点以补偿时延差异");
@@ -31,7 +31,7 @@
             int initialY = (int)Math.Round(upperCluster.Average(node => node.Y));
 
             // 设置一个初始的中心点
-            Node bestCenterPoint = new Node(initialX, initialY, delay: 0, Id: 0, width: BufferSize_width, height: BufferSize_height);
+            Node bestCenterPoint = new Node(initialX, initialY, 0, 0, width: BufferSize_width, height: BufferSize_height);
             double minDifferenceSum = double.MaxValue;
 
             // 在搜索半径 gamma 内寻找最优中心点位置
@@ -39,7 +39,7 @@
             {
                 for (int dy = -gamma; dy <= gamma; dy++)
                 {
-                    Node candidateCenter = new Node(initialX + dx, initialY + dy, delay: 0, Id: 0, width: 0, height: 0);
+                    Node candidateCenter = new Node(initialX + dx, initialY + dy, delay: 0, 0, width: BufferSize_width, height: BufferSize_height);
                     double differenceSum = 0;
 
                     foreach (var node in upperCluster)
