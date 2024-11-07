@@ -112,10 +112,12 @@ namespace KSplittingNamespace
             return mstEdges;
         }
 
+
         private double CalculateEL()
         {
             int numRegisters = nodes.Count;
-            return alpha * Math.Sqrt((width * length - obstacleArea) / (double)numRegisters);
+            // 调整 EL 值的计算公式
+            return alpha * Math.Sqrt((width * length - obstacleArea) / (double)numRegisters) * 1.5;
         }
 
         private List<List<Node>> CutEdges(List<Edge> edges, double EL)
@@ -160,17 +162,15 @@ namespace KSplittingNamespace
                         DFS(neighbor, mst, visited, cluster);
         }
 
+
         private List<List<Node>> CheckAndFixClusters(List<List<Node>> clusters)
         {
             var validClusters = new List<List<Node>>();
 
             foreach (var cluster in clusters)
             {
-                Console.WriteLine($"检查这个聚类节点中");
                 if (cluster.Count > maxFanout || CalculateClusterRC(cluster) > maxNetRC)
                 {
-                    Console.WriteLine($"分裂不合法的聚类节点");
-                    // 这里有问题，需要修复
                     // 分裂不合法的聚类
                     var newClusters = SplitCluster(cluster, 0);
                     validClusters.AddRange(newClusters);
@@ -180,8 +180,52 @@ namespace KSplittingNamespace
                     validClusters.Add(cluster);
                 }
             }
+
+            // 合并较小的聚类团
+            validClusters = MergeSmallClusters(validClusters);
+
             return validClusters;
         }
+
+        private List<List<Node>> MergeSmallClusters(List<List<Node>> clusters)
+        {
+            var mergedClusters = new List<List<Node>>();
+            var smallClusters = new List<List<Node>>();
+
+            foreach (var cluster in clusters)
+            {
+                if (cluster.Count < maxFanout / 2)
+                {
+                    smallClusters.Add(cluster);
+                }
+                else
+                {
+                    mergedClusters.Add(cluster);
+                }
+            }
+
+            // 合并小的聚类团
+            while (smallClusters.Count > 0)
+            {
+                var cluster = smallClusters[0];
+                smallClusters.RemoveAt(0);
+
+                foreach (var smallCluster in smallClusters.ToList())
+                {
+                    if (cluster.Count + smallCluster.Count <= maxFanout)
+                    {
+                        cluster.AddRange(smallCluster);
+                        smallClusters.Remove(smallCluster);
+                    }
+                }
+
+                mergedClusters.Add(cluster);
+            }
+
+            return mergedClusters;
+        }
+
+
 
         private double CalculateClusterRC(List<Node> cluster)
         {
@@ -196,25 +240,36 @@ namespace KSplittingNamespace
         }
 
 
+
         private List<List<Node>> SplitCluster(List<Node> cluster, int depth)
         {
-            if (depth > 10) // 限制递归深度，避免无限递归
+            // 达到最大递归深度或聚类团大小已足够小，则终止递归
+            if (depth > 10 || cluster.Count <= maxFanout)
             {
                 return new List<List<Node>> { cluster };
             }
 
+            // 计算边集并尝试构建最小生成树（MST）
             var edges = BuildSparseGraphForCluster(cluster);
             var mstEdges = KruskalMST(edges);
 
-            // 使用权重排序找到最长边，并且先尝试分裂
+            // 根据MST中的最长边尝试分裂
             double maxWeight = mstEdges.Max(edge => edge.Weight);
             var newClusters = CutEdges(mstEdges, maxWeight);
+
+            // 如果分裂后结果与原始聚类团相似，避免无意义的分裂，直接返回原聚类团
+            if (newClusters.Count == 1 && newClusters[0].Count == cluster.Count)
+            {
+                return new List<List<Node>> { cluster };
+            }
 
             var validClusters = new List<List<Node>>();
             foreach (var newCluster in newClusters)
             {
+                // 检查每个子聚类团的合法性，只有不符合要求时才进一步分裂
                 if (newCluster.Count > maxFanout || CalculateClusterRC(newCluster) > maxNetRC)
                 {
+                    // 递归分裂仅在聚类团过大或RC值超出maxNetRC时继续
                     var furtherSplitClusters = SplitCluster(newCluster, depth + 1);
                     validClusters.AddRange(furtherSplitClusters);
                 }
@@ -224,7 +279,8 @@ namespace KSplittingNamespace
                 }
             }
 
-            return validClusters;
+            // 如果没有找到有效分裂结果，返回原始聚类团以避免无限递归
+            return validClusters.Count > 0 ? validClusters : new List<List<Node>> { cluster };
         }
 
 

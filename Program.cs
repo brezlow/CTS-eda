@@ -41,15 +41,15 @@ namespace edaContest
             List<List<Node>> clusters = kSplitting.ExecuteClustering();
 
             // 输出聚类结果
-            Console.WriteLine($"聚类团数目: {clusters.Count}");
-            for (int i = 0; i < clusters.Count; i++)
-            {
-                Console.WriteLine($"聚类团 {i + 1}:");
-                foreach (var node in clusters[i])
-                {
-                    Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y})");
-                }
-            }
+            // Console.WriteLine($"聚类团数目: {clusters.Count}");
+            // for (int i = 0; i < clusters.Count; i++)
+            // {
+            //     Console.WriteLine($"聚类团 {i + 1}:");
+            //     foreach (var node in clusters[i])
+            //     {
+            //         Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y})");
+            //     }
+            // }
 
             // FileWriter writer = new FileWriter();
             // writer.WriteOutput(outputFilePath, circuitData, nets);
