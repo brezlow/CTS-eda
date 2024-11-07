@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace KSplittingNamespace
@@ -174,7 +175,7 @@ namespace KSplittingNamespace
 
             foreach (var cluster in clusters)
             {
-                if (cluster.Count > maxFanout || CalculateClusterRC(cluster) > maxNetRC)
+                if (cluster.Count > maxFanout)
                 {
                     // 分裂不合法的聚类
                     var newClusters = SplitCluster(cluster, 0);
@@ -230,17 +231,7 @@ namespace KSplittingNamespace
             return mergedClusters;
         }
 
-        private double CalculateClusterRC(List<Node> cluster)
-        {
-            double rc = 0;
-            foreach (var node in cluster)
-            {
-                double dx = Math.Abs(node.X - cluster[0].X);
-                double dy = Math.Abs(node.Y - cluster[0].Y);
-                rc += 0.5 * (dx * dx + dy * dy);
-            }
-            return rc;
-        }
+
 
         private List<List<Node>> SplitCluster(List<Node> cluster, int depth)
         {
@@ -268,9 +259,9 @@ namespace KSplittingNamespace
             foreach (var newCluster in newClusters)
             {
                 // 检查每个子聚类团的合法性，只有不符合要求时才进一步分裂
-                if (newCluster.Count > maxFanout || CalculateClusterRC(newCluster) > maxNetRC)
+                if (newCluster.Count > maxFanout)
                 {
-                    // 递归分裂仅在聚类团过大或RC值超出maxNetRC时继续
+                    // 递归分裂仅在聚类团过大
                     var furtherSplitClusters = SplitCluster(newCluster, depth + 1);
                     validClusters.AddRange(furtherSplitClusters);
                 }
@@ -300,6 +291,43 @@ namespace KSplittingNamespace
             });
 
             return edges;
+        }
+
+        public List<List<Node>> CheckRCValue(List<List<Node>> clusters)
+        {
+            var validClusters = new List<List<Node>>();
+
+            foreach (var cluster in clusters)
+            {
+                if (CalculateClusterRC(cluster) <= maxNetRC)
+                {
+                    validClusters.Add(cluster);
+                }
+                else
+                {
+                    var newClusters = SplitCluster(cluster, 0);
+                    validClusters.AddRange(newClusters);
+                }
+            }
+
+            return validClusters;
+        }
+
+        public Node GetCentetPointPosition(List<Node> cluster)
+        {
+
+            var clustering = new CenterPointNamespace.Clustering();
+
+            var CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+
+            // 检查缓冲器位置是否与已有元件重叠
+            if (IsOverlapping(CenterPointPosition))
+            {
+                // 如果重叠，尝试在附近找到一个不重叠的位置
+                centerPoint = FindNonOverlappingPosition(centerPoint);
+            }
+
+            return CenterPointPosition;
         }
 
 
@@ -346,7 +374,7 @@ namespace KSplittingNamespace
                     return true;
                 }
             }
-            
+
 
             foreach (var buffer in circuitData.BufferInstances)
             {
@@ -382,6 +410,28 @@ namespace KSplittingNamespace
 
             // 如果找不到不重叠的位置，返回原位置
             return centerPoint;
+        }
+        private double CalculateBufferLoad(List<Node> cluster, Node buffer)
+        {
+            double rc = circuitData.NetUnitR * circuitData.NetUnitC;
+            double load = 0.0;
+
+            foreach (var node in cluster)
+            {
+                double distance = CalculateManhattanDistance(buffer, node);
+                load += Math.Pow(distance, 2);
+            }
+
+            return 0.5 * rc * load;
+        }
+        private double CalculateManhattanDistance(Node node1, Node node2)
+        {
+            double centerX1 = node1.X + node1.Width / 2.0;
+            double centerY1 = node1.Y + node1.Height / 2.0;
+            double centerX2 = node2.X + node2.Width / 2.0;
+            double centerY2 = node2.Y + node2.Height / 2.0;
+
+            return Math.Abs(centerX1 - centerX2) + Math.Abs(centerY1 - centerY2);
         }
 
 
