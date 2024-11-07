@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 
 // 电路数据类型, 用于存储电路布局信息
-class CircuitData
+public class CircuitData
 {
     public int Units { get; set; }
     public (int Width, int Height) FloorplanSize { get; set; }
@@ -19,16 +19,17 @@ class CircuitData
     public double BufferDelay { get; set; }
 }
 
-class FFInstance
+public class FFInstance
 {
     public required string Name { get; set; }
     public (int X, int Y) Position { get; set; }
 }
 
-class BufferInstance
+public class BufferInstance
 {
     public required string Name { get; set; }
     public (int X, int Y) Position { get; set; }
+    public List<Node> ContainedNodes { get; set; } = new List<Node>(); // 添加 ContainedNodes 属性
 }
 
 public class Node
@@ -49,6 +50,7 @@ public class Node
     public double Delay { get; set; } // 平均延迟，用于中层聚类的补偿计算
     public int Width { get; }  // 长方形的宽度
     public int Height { get; } // 长方形的高度
+    public string BufferName { get; set; } // 添加 BufferName 属性
 }
 
 class Net

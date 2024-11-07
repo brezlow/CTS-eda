@@ -20,7 +20,6 @@ namespace KSplittingNamespace
 
         private double CalculateManhattanDistance(Node node1, Node node2)
         {
-
             double centerX1 = node1.X + node1.Width / 2.0;
             double centerY1 = node1.Y + node1.Height / 2.0;
             double centerX2 = node2.X + node2.Width / 2.0;
@@ -39,8 +38,10 @@ namespace KSplittingNamespace
         private readonly double alpha;
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
+        private CircuitData circuitData;
+        private List<Node> originalNodes; // 全局数据结构，用于存储原始的 Node 信息
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int obstacleArea, double alpha, int maxFanout, int maxNetRC, int maxEdgesPerNode)
+        public KSplittingClustering(List<Node> nodes, int width, int length, int obstacleArea, double alpha, int maxFanout, int maxNetRC, int maxEdgesPerNode, CircuitData circuitData)
         {
             this.nodes = nodes;
             this.width = width;
@@ -50,6 +51,8 @@ namespace KSplittingNamespace
             this.maxFanout = maxFanout;
             this.maxNetRC = maxNetRC;
             this.maxEdgesPerNode = maxEdgesPerNode;
+            this.circuitData = circuitData;
+            this.originalNodes = new List<Node>(); // 初始化全局数据结构
 
             // 创建 KD 树以便高效查找最近邻节点
             kdTree = new KDTree(nodes);
@@ -69,6 +72,10 @@ namespace KSplittingNamespace
             Console.WriteLine($"聚类数: {clusters.Count}");
             clusters = CheckAndFixClusters(clusters);
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
+
+            // 计算各个聚类团的“中心点”，放置缓冲器
+            var bufferInstances = PlaceBuffers(clusters);
+            Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
 
             return clusters;
         }
@@ -111,7 +118,6 @@ namespace KSplittingNamespace
 
             return mstEdges;
         }
-
 
         private double CalculateEL()
         {
@@ -161,7 +167,6 @@ namespace KSplittingNamespace
                     if (!visited.Contains(neighbor))
                         DFS(neighbor, mst, visited, cluster);
         }
-
 
         private List<List<Node>> CheckAndFixClusters(List<List<Node>> clusters)
         {
@@ -225,8 +230,6 @@ namespace KSplittingNamespace
             return mergedClusters;
         }
 
-
-
         private double CalculateClusterRC(List<Node> cluster)
         {
             double rc = 0;
@@ -238,8 +241,6 @@ namespace KSplittingNamespace
             }
             return rc;
         }
-
-
 
         private List<List<Node>> SplitCluster(List<Node> cluster, int depth)
         {
@@ -283,7 +284,6 @@ namespace KSplittingNamespace
             return validClusters.Count > 0 ? validClusters : new List<List<Node>> { cluster };
         }
 
-
         private List<Edge> BuildSparseGraphForCluster(List<Node> cluster)
         {
             var edges = new List<Edge>();
@@ -301,135 +301,214 @@ namespace KSplittingNamespace
 
             return edges;
         }
-    }
 
-    /// <summary>
-    /// 并查集
-    /// </summary>
-    public class UnionFind
-    {
-        private int[] parent;
-        private int[] rank;
 
-        public UnionFind(int size)
+        public List<BufferInstance> PlaceBuffers(List<List<Node>> clusters)
         {
-            parent = new int[size];
-            rank = new int[size];
-            for (int i = 0; i < size; i++) parent[i] = i;
-        }
+            var bufferInstances = new List<BufferInstance>();
+            var clustering = new CenterPointNamespace.Clustering();
 
-        public int Find(int x)
-        {
-            // 非递归实现路径压缩
-            int root = x;
-            while (root != parent[root])
+            foreach (var cluster in clusters)
             {
-                root = parent[root];
-            }
-            // 路径压缩
-            while (x != root)
-            {
-                int next = parent[x];
-                parent[x] = root;
-                x = next;
-            }
-            return root;
-        }
+                var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
 
-        public bool Union(int x, int y)
-        {
-            int rootX = Find(x);
-            int rootY = Find(y);
-
-            if (rootX != rootY)
-            {
-                if (rank[rootX] > rank[rootY]) parent[rootY] = rootX;
-                else if (rank[rootX] < rank[rootY]) parent[rootX] = rootY;
-                else
+                // 检查缓冲器位置是否与已有元件重叠
+                if (IsOverlapping(centerPoint))
                 {
-                    parent[rootY] = rootX;
-                    rank[rootX]++;
+                    // 如果重叠，尝试在附近找到一个不重叠的位置
+                    centerPoint = FindNonOverlappingPosition(centerPoint);
                 }
-                return true;
+
+                var bufferInstance = new BufferInstance
+                {
+                    Name = $"BUF_{bufferInstances.Count + 1}",
+                    Position = (centerPoint.X, centerPoint.Y),
+                    ContainedNodes = new List<Node>(cluster) // 记录聚类团中的元件
+                };
+                bufferInstances.Add(bufferInstance);
+
+                // 将原始的 Node 信息存储到全局数据结构中
+                originalNodes.AddRange(cluster);
+
+                // 将中心点放置到一个新的 Node 中
+                var newNode = new Node(centerPoint.X, centerPoint.Y, 0, bufferInstance.Name.GetHashCode(), circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+                nodes.Add(newNode);
             }
+
+            return bufferInstances;
+        }
+        private bool IsOverlapping(Node centerPoint)
+        {
+            foreach (var ff in circuitData.FFInstances)
+            {
+                if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, 0, circuitData.FFSize.Width, circuitData.FFSize.Height)))
+                {
+                    return true;
+                }
+            }
+            
+
+            foreach (var buffer in circuitData.BufferInstances)
+            {
+                if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, 0, circuitData.BufferSize.Width, circuitData.BufferSize.Height)))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
-    }
 
-
-
-    // KD 树实现，用于加速近邻查找
-    public class KDTree
-    {
-        private class KDNode
+        private bool IsOverlapping(Node node1, Node node2)
         {
-            public required Node Data;
-            public required KDNode Left;
-            public required KDNode Right;
-            public bool VerticalSplit;
+            return !(node1.X + node1.Width <= node2.X || node2.X + node2.Width <= node1.X ||
+                     node1.Y + node1.Height <= node2.Y || node2.Y + node2.Height <= node1.Y);
         }
 
-        private KDNode root;
-
-        public KDTree(List<Node> nodes)
+        private Node FindNonOverlappingPosition(Node centerPoint)
         {
-            root = Build(nodes, true);
-        }
-
-        private KDNode Build(List<Node> nodes, bool vertical)
-        {
-            if (nodes.Count == 0) return null;
-            nodes.Sort((a, b) => vertical ? a.X.CompareTo(b.X) : a.Y.CompareTo(b.Y));
-            int median = nodes.Count / 2;
-
-            return new KDNode
+            int step = 10; // 步长，可以根据需要调整
+            for (int dx = -step; dx <= step; dx += step)
             {
-                Data = nodes[median],
-                VerticalSplit = vertical,
-                Left = Build(nodes.Take(median).ToList(), !vertical),
-                Right = Build(nodes.Skip(median + 1).ToList(), !vertical)
-            };
-        }
-
-        public void NearestNeighbors(Node node, int maxNeighbors, List<Edge> edges)
-        {
-            NearestNeighbors(root, node, maxNeighbors, edges, double.MaxValue);
-        }
-        private double CalculateManhattanDistance(Node node1, Node node2)
-        {
-
-            double centerX1 = node1.X + node1.Width / 2.0;
-            double centerY1 = node1.Y + node1.Height / 2.0;
-            double centerX2 = node2.X + node2.Width / 2.0;
-            double centerY2 = node2.Y + node2.Height / 2.0;
-
-            return Math.Abs(centerX1 - centerX2) + Math.Abs(centerY1 - centerY2);
-        }
-
-
-        private void NearestNeighbors(KDNode kdNode, Node node, int maxNeighbors, List<Edge> edges, double maxDistance)
-        {
-            if (kdNode == null) return;
-
-            var dist = CalculateManhattanDistance(node, kdNode.Data);
-            if (edges.Count < maxNeighbors || dist < maxDistance)
-            {
-                edges.Add(new Edge(node, kdNode.Data));
-                if (edges.Count > maxNeighbors) edges.RemoveAt(edges.Count - 1);
-                maxDistance = edges.Last().Weight;
+                for (int dy = -step; dy <= step; dy += step)
+                {
+                    var newCenterPoint = new Node(centerPoint.X + dx, centerPoint.Y + dy, 0, 0, centerPoint.Width, centerPoint.Height);
+                    if (!IsOverlapping(newCenterPoint))
+                    {
+                        return newCenterPoint;
+                    }
+                }
             }
 
-            // 确保不重复计算邻居
-            KDNode primary = kdNode.VerticalSplit
-                ? (node.X < kdNode.Data.X ? kdNode.Left : kdNode.Right)
-                : (node.Y < kdNode.Data.Y ? kdNode.Left : kdNode.Right);
-            KDNode secondary = primary == kdNode.Left ? kdNode.Right : kdNode.Left;
-
-            NearestNeighbors(primary, node, maxNeighbors, edges, maxDistance);
-            if ((kdNode.VerticalSplit ? Math.Abs(node.X - kdNode.Data.X) : Math.Abs(node.Y - kdNode.Data.Y)) < maxDistance)
-                NearestNeighbors(secondary, node, maxNeighbors, edges, maxDistance);
+            // 如果找不到不重叠的位置，返回原位置
+            return centerPoint;
         }
 
+
+
+        /// <summary>
+        /// 并查集
+        /// </summary>
+        public class UnionFind
+        {
+            private int[] parent;
+            private int[] rank;
+
+            public UnionFind(int size)
+            {
+                parent = new int[size];
+                rank = new int[size];
+                for (int i = 0; i < size; i++) parent[i] = i;
+            }
+
+            public int Find(int x)
+            {
+                // 非递归实现路径压缩
+                int root = x;
+                while (root != parent[root])
+                {
+                    root = parent[root];
+                }
+                // 路径压缩
+                while (x != root)
+                {
+                    int next = parent[x];
+                    parent[x] = root;
+                    x = next;
+                }
+                return root;
+            }
+
+            public bool Union(int x, int y)
+            {
+                int rootX = Find(x);
+                int rootY = Find(y);
+
+                if (rootX != rootY)
+                {
+                    if (rank[rootX] > rank[rootY]) parent[rootY] = rootX;
+                    else if (rank[rootX] < rank[rootY]) parent[rootX] = rootY;
+                    else
+                    {
+                        parent[rootY] = rootX;
+                        rank[rootX]++;
+                    }
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // KD 树实现，用于加速近邻查找
+        public class KDTree
+        {
+            private class KDNode
+            {
+                public required Node Data;
+                public required KDNode Left;
+                public required KDNode Right;
+                public bool VerticalSplit;
+            }
+
+            private KDNode root;
+
+            public KDTree(List<Node> nodes)
+            {
+                root = Build(nodes, true);
+            }
+
+            private KDNode Build(List<Node> nodes, bool vertical)
+            {
+                if (nodes.Count == 0) return null;
+                nodes.Sort((a, b) => vertical ? a.X.CompareTo(b.X) : a.Y.CompareTo(b.Y));
+                int median = nodes.Count / 2;
+
+                return new KDNode
+                {
+                    Data = nodes[median],
+                    VerticalSplit = vertical,
+                    Left = Build(nodes.Take(median).ToList(), !vertical),
+                    Right = Build(nodes.Skip(median + 1).ToList(), !vertical)
+                };
+            }
+
+            public void NearestNeighbors(Node node, int maxNeighbors, List<Edge> edges)
+            {
+                NearestNeighbors(root, node, maxNeighbors, edges, double.MaxValue);
+            }
+
+            private double CalculateManhattanDistance(Node node1, Node node2)
+            {
+                double centerX1 = node1.X + node1.Width / 2.0;
+                double centerY1 = node1.Y + node1.Height / 2.0;
+                double centerX2 = node2.X + node2.Width / 2.0;
+                double centerY2 = node2.Y + node2.Height / 2.0;
+
+                return Math.Abs(centerX1 - centerX2) + Math.Abs(centerY1 - centerY2);
+            }
+
+            private void NearestNeighbors(KDNode kdNode, Node node, int maxNeighbors, List<Edge> edges, double maxDistance)
+            {
+                if (kdNode == null) return;
+
+                var dist = CalculateManhattanDistance(node, kdNode.Data);
+                if (edges.Count < maxNeighbors || dist < maxDistance)
+                {
+                    edges.Add(new Edge(node, kdNode.Data));
+                    if (edges.Count > maxNeighbors) edges.RemoveAt(edges.Count - 1);
+                    maxDistance = edges.Last().Weight;
+                }
+
+                // 确保不重复计算邻居
+                KDNode primary = kdNode.VerticalSplit
+                    ? (node.X < kdNode.Data.X ? kdNode.Left : kdNode.Right)
+                    : (node.Y < kdNode.Data.Y ? kdNode.Left : kdNode.Right);
+                KDNode secondary = primary == kdNode.Left ? kdNode.Right : kdNode.Left;
+
+                NearestNeighbors(primary, node, maxNeighbors, edges, maxDistance);
+                if ((kdNode.VerticalSplit ? Math.Abs(node.X - kdNode.Data.X) : Math.Abs(node.Y - kdNode.Data.Y)) < maxDistance)
+                    NearestNeighbors(secondary, node, maxNeighbors, edges, maxDistance);
+            }
+        }
     }
 }
-
