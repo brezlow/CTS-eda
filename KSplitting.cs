@@ -75,8 +75,10 @@ namespace KSplittingNamespace
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
             // 计算各个聚类团的“中心点”，放置缓冲器
-            var bufferInstances = PlaceBuffers(clusters);
-            Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
+            clusters = CheckRCValue(clusters);
+            // var bufferInstances = PlaceBuffers(clusters);
+            // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
+             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
 
             return clusters;
         }
@@ -299,14 +301,17 @@ namespace KSplittingNamespace
 
             foreach (var cluster in clusters)
             {
-                if (CalculateClusterRC(cluster) <= maxNetRC)
+                var buffer = GetCentetPointPosition(cluster);
+                var bufferLoad = CalculateBufferLoad(cluster, buffer);
+                if (bufferLoad <= maxNetRC)
                 {
                     validClusters.Add(cluster);
                 }
                 else
                 {
                     var newClusters = SplitCluster(cluster, 0);
-                    validClusters.AddRange(newClusters);
+                    var checkedClusters = CheckRCValue(newClusters);
+                    validClusters.AddRange(checkedClusters);
                 }
             }
 
@@ -324,7 +329,7 @@ namespace KSplittingNamespace
             if (IsOverlapping(CenterPointPosition))
             {
                 // 如果重叠，尝试在附近找到一个不重叠的位置
-                centerPoint = FindNonOverlappingPosition(centerPoint);
+                CenterPointPosition = FindNonOverlappingPosition(CenterPointPosition);
             }
 
             return CenterPointPosition;
