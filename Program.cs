@@ -30,7 +30,7 @@ namespace edaContest
             }
 
             // 创建 KSplittingClustering 实例
-            double alpha = circuitData.MaxFanout; // 根据需要设置 alpha 值
+            double alpha = 400; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             int maxNetRC = (int)circuitData.MaxNetRC;
             KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC, maxFanout, circuitData);
@@ -41,26 +41,26 @@ namespace edaContest
             List<List<Node>> clusters = kSplitting.ExecuteClustering();
 
             // 将缓冲器实例添加到 CircuitData 中
-            circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));
+            // circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));
 
             // 输出缓冲器位置
-            Console.WriteLine($"放置缓冲器数目: {circuitData.BufferInstances.Count}");
-            foreach (var buffer in circuitData.BufferInstances)
-            {
-                Console.WriteLine($"缓冲器 {buffer.Name}: ({buffer.Position.X}, {buffer.Position.Y})");
-                break;
-            }
+            // Console.WriteLine($"放置缓冲器数目: {circuitData.BufferInstances.Count}");
+            // foreach (var buffer in circuitData.BufferInstances)
+            // {
+            //     Console.WriteLine($"缓冲器 {buffer.Name}: ({buffer.Position.X}, {buffer.Position.Y})");
+            //     break;
+            // }
 
             // 输出聚类结果
-            foreach (var cluster in clusters)
-            {
-                Console.WriteLine($"聚类团 {clusters.IndexOf(cluster) + 1}:");
-                foreach (var node in cluster)
-                {
-                    Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y}) -> 缓冲器 {node.BufferName}");
-                }
-                break;
-            }
+            // foreach (var cluster in clusters)
+            // {
+            //     Console.WriteLine($"聚类团 {clusters.IndexOf(cluster) + 1}:");
+            //     foreach (var node in cluster)
+            //     {
+            //         Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y}) -> 缓冲器 {node.BufferName}");
+            //     }
+            //     break;
+            // }
 
             // FileWriter writer = new FileWriter();
             // writer.WriteOutput(outputFilePath, circuitData, nets);

@@ -6,32 +6,54 @@
         /// 计算最底层聚类团的“中心点”位置。
         /// 使用横纵坐标的均值作为聚类团的中心点。
         /// </summary>
-        /// <param name="cluster">最底层聚类团中的节点列表</param>
+        /// <param name="cluster">最底层聚类团中的节点链表</param>
         /// <returns>返回计算得到的“中心点”节点</returns>
-        public Node CalculateBottomLevelCenterPoint(List<Node> cluster, int BufferSize_width, int BufferSize_height)
+        public Node CalculateBottomLevelCenterPoint(LinkedList<Node> cluster, int BufferSize_width, int BufferSize_height)
         {
             if (cluster == null || cluster.Count == 0)
                 throw new ArgumentException("聚类团不能为空");
 
-            // 计算横纵坐标的均值，并四舍五入为整数
-            int centerX = (int)Math.Round(cluster.Average(node => node.X));
-            int centerY = (int)Math.Round(cluster.Average(node => node.Y));
+            // 计算横纵坐标的均值
+            double sumX = 0;
+            double sumY = 0;
+            int count = 0;
+
+            foreach (var node in cluster)
+            {
+                sumX += node.X;
+                sumY += node.Y;
+                count++;
+            }
+
+            int centerX = (int)Math.Round(sumX / count);
+            int centerY = (int)Math.Round(sumY / count);
 
             // 假设缓冲器的尺寸为 (0, 0) 或根据实际情况调整
             return new Node(centerX, centerY, 0, 0, BufferSize_width, BufferSize_height);
         }
 
-        public Node CalculateIntermediateLevelCenterPoint(List<Node> upperCluster, int gamma, int BufferSize_width, int BufferSize_height)
+        public Node CalculateIntermediateLevelCenterPoint(LinkedList<Node> upperCluster, int gamma, int BufferSize_width, int BufferSize_height)
         {
             if (upperCluster == null || upperCluster.Count < 2)
                 throw new ArgumentException("聚类团需要至少两个节点以补偿时延差异");
 
             // 初步中心点（均值计算）
-            int initialX = (int)Math.Round(upperCluster.Average(node => node.X));
-            int initialY = (int)Math.Round(upperCluster.Average(node => node.Y));
+            double sumX = 0;
+            double sumY = 0;
+            int count = 0;
+
+            foreach (var node in upperCluster)
+            {
+                sumX += node.X;
+                sumY += node.Y;
+                count++;
+            }
+
+            int initialX = (int)Math.Round(sumX / count);
+            int initialY = (int)Math.Round(sumY / count);
 
             // 设置一个初始的中心点
-            Node bestCenterPoint = new Node(initialX, initialY, 0, 0, width: BufferSize_width, height: BufferSize_height);
+            Node bestCenterPoint = new Node(initialX, initialY, 0, 0, BufferSize_width, BufferSize_height);
             double minDifferenceSum = double.MaxValue;
 
             // 在搜索半径 gamma 内寻找最优中心点位置
@@ -39,7 +61,7 @@
             {
                 for (int dy = -gamma; dy <= gamma; dy++)
                 {
-                    Node candidateCenter = new Node(initialX + dx, initialY + dy, delay: 0, 0, width: BufferSize_width, height: BufferSize_height);
+                    Node candidateCenter = new Node(initialX + dx, initialY + dy, 0, 0, BufferSize_width, BufferSize_height);
                     double differenceSum = 0;
 
                     foreach (var node in upperCluster)

@@ -8,8 +8,8 @@ public class CircuitData
     public (int Width, int Height) FFSize { get; set; }
     public (int Width, int Height) BufferSize { get; set; }
     public (int X, int Y) ClockRootPosition { get; set; }
-    public List<FFInstance> FFInstances { get; set; } = new List<FFInstance>();
-    public List<BufferInstance> BufferInstances { get; set; } = new List<BufferInstance>();
+    public LinkedList<FFInstance> FFInstances { get; set; } = new LinkedList<FFInstance>();
+    public LinkedList<BufferInstance> BufferInstances { get; set; } = new LinkedList<BufferInstance>();
 
     // 约束属性，如最大扇出、rc值等
     public double NetUnitR { get; set; }
@@ -29,7 +29,7 @@ public class BufferInstance
 {
     public required string Name { get; set; }
     public (int X, int Y) Position { get; set; }
-    public List<Node> ContainedNodes { get; set; } = new List<Node>(); // 添加 ContainedNodes 属性
+    public LinkedList<Node> ContainedNodes { get; set; } = new LinkedList<Node>(); // 修改为 LinkedList<Node>
 }
 
 public class Node
@@ -57,9 +57,9 @@ class Net
 {
     public string Name { get; set; }
     public string Source { get; set; }
-    public List<string> Sinks { get; set; }
+    public LinkedList<string> Sinks { get; set; } // 修改为 LinkedList<string>
 
-    public Net(string name, string source, List<string> sinks)
+    public Net(string name, string source, LinkedList<string> sinks)
     {
         Name = name;
         Source = source;

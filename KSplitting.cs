@@ -78,7 +78,7 @@ namespace KSplittingNamespace
             clusters = CheckRCValue(clusters);
             // var bufferInstances = PlaceBuffers(clusters);
             // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
-             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
+            Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
 
             return clusters;
         }
@@ -125,8 +125,7 @@ namespace KSplittingNamespace
         private double CalculateEL()
         {
             int numRegisters = nodes.Count;
-            // 调整 EL 值的计算公式
-            return alpha * Math.Sqrt((width * length - obstacleArea) / (double)numRegisters) * 1.5;
+            return alpha * Math.Sqrt((width * length - obstacleArea) / (double)numRegisters);
         }
 
         private List<List<Node>> CutEdges(List<Edge> edges, double EL)
@@ -171,17 +170,30 @@ namespace KSplittingNamespace
                         DFS(neighbor, mst, visited, cluster);
         }
 
+
         private List<List<Node>> CheckAndFixClusters(List<List<Node>> clusters)
         {
+            Console.WriteLine($"原始聚类数: {clusters.Count}");
             var validClusters = new List<List<Node>>();
+            int clusterNumber = clusters.Count;
 
             foreach (var cluster in clusters)
             {
+                // 先分裂超出扇出的聚类
                 if (cluster.Count > maxFanout)
                 {
-                    // 分裂不合法的聚类
-                    var newClusters = SplitCluster(cluster, 0);
-                    validClusters.AddRange(newClusters);
+                    var splitClusters = SplitCluster(cluster);
+                    foreach (var subCluster in splitClusters)
+                    {
+                        if (subCluster.Count <= maxFanout)
+                        {
+                            validClusters.Add(subCluster);
+                        }
+                        else
+                        {
+                            validClusters.AddRange(SplitCluster(subCluster));
+                        }
+                    }
                 }
                 else
                 {
@@ -190,7 +202,7 @@ namespace KSplittingNamespace
             }
 
             // 合并较小的聚类团
-            validClusters = MergeSmallClusters(validClusters);
+            // validClusters = MergeSmallClusters(validClusters);
 
             return validClusters;
         }
@@ -235,19 +247,14 @@ namespace KSplittingNamespace
 
 
 
-        private List<List<Node>> SplitCluster(List<Node> cluster, int depth)
-        {
-            // 达到最大递归深度或聚类团大小已足够小，则终止递归
-            if (depth > 10 || cluster.Count <= maxFanout)
-            {
-                return new List<List<Node>> { cluster };
-            }
 
+        private List<List<Node>> SplitCluster(List<Node> cluster)
+        {
             // 计算边集并尝试构建最小生成树（MST）
             var edges = BuildSparseGraphForCluster(cluster);
             var mstEdges = KruskalMST(edges);
 
-            // 根据MST中的最长边尝试分裂
+            // 根据 MST 中的最长边尝试分裂
             double maxWeight = mstEdges.Max(edge => edge.Weight);
             var newClusters = CutEdges(mstEdges, maxWeight);
 
@@ -257,25 +264,10 @@ namespace KSplittingNamespace
                 return new List<List<Node>> { cluster };
             }
 
-            var validClusters = new List<List<Node>>();
-            foreach (var newCluster in newClusters)
-            {
-                // 检查每个子聚类团的合法性，只有不符合要求时才进一步分裂
-                if (newCluster.Count > maxFanout)
-                {
-                    // 递归分裂仅在聚类团过大
-                    var furtherSplitClusters = SplitCluster(newCluster, depth + 1);
-                    validClusters.AddRange(furtherSplitClusters);
-                }
-                else
-                {
-                    validClusters.Add(newCluster);
-                }
-            }
-
-            // 如果没有找到有效分裂结果，返回原始聚类团以避免无限递归
-            return validClusters.Count > 0 ? validClusters : new List<List<Node>> { cluster };
+            // 返回分裂后的新聚类团
+            return newClusters.Count > 0 ? newClusters : new List<List<Node>> { cluster };
         }
+
 
         private List<Edge> BuildSparseGraphForCluster(List<Node> cluster)
         {
@@ -295,22 +287,28 @@ namespace KSplittingNamespace
             return edges;
         }
 
-        public List<List<Node>> CheckRCValue(List<List<Node>> clusters)
+
+        private List<List<Node>> CheckRCValue(List<List<Node>> clusters)
         {
             var validClusters = new List<List<Node>>();
+            int clusterNumber = 0;
 
             foreach (var cluster in clusters)
             {
+                clusterNumber++;
                 var buffer = GetCentetPointPosition(cluster);
                 var bufferLoad = CalculateBufferLoad(cluster, buffer);
+
                 if (bufferLoad <= maxNetRC)
                 {
                     validClusters.Add(cluster);
                 }
                 else
                 {
-                    var newClusters = SplitCluster(cluster, 0);
-                    var checkedClusters = CheckRCValue(newClusters);
+                    // 如果 RC 值超过阈值，对该聚类分裂
+                    Console.WriteLine($"聚类：{clusterNumber}距离{bufferLoad}发生一次分裂");
+                    var splitClusters = SplitCluster(cluster);
+                    var checkedClusters = CheckRCValue(splitClusters);
                     validClusters.AddRange(checkedClusters);
                 }
             }
@@ -499,10 +497,10 @@ namespace KSplittingNamespace
         {
             private class KDNode
             {
-                public required Node Data;
-                public required KDNode Left;
-                public required KDNode Right;
-                public bool VerticalSplit;
+                public required Node Data { get; set; }
+                public required KDNode Left { get; set; }
+                public required KDNode Right { get; set; }
+                public bool VerticalSplit { get; set; }
             }
 
             private KDNode root;
@@ -515,21 +513,51 @@ namespace KSplittingNamespace
             private KDNode Build(List<Node> nodes, bool vertical)
             {
                 if (nodes.Count == 0) return null;
+
                 nodes.Sort((a, b) => vertical ? a.X.CompareTo(b.X) : a.Y.CompareTo(b.Y));
-                int median = nodes.Count / 2;
+                int medianIndex = nodes.Count / 2;
 
                 return new KDNode
                 {
-                    Data = nodes[median],
+                    Data = nodes[medianIndex],
                     VerticalSplit = vertical,
-                    Left = Build(nodes.Take(median).ToList(), !vertical),
-                    Right = Build(nodes.Skip(median + 1).ToList(), !vertical)
+                    Left = Build(nodes.Take(medianIndex).ToList(), !vertical),
+                    Right = Build(nodes.Skip(medianIndex + 1).ToList(), !vertical)
                 };
             }
+
 
             public void NearestNeighbors(Node node, int maxNeighbors, List<Edge> edges)
             {
                 NearestNeighbors(root, node, maxNeighbors, edges, double.MaxValue);
+            }
+
+            private void NearestNeighbors(KDNode kdNode, Node node, int maxNeighbors, List<Edge> edges, double maxDistance)
+            {
+                if (kdNode == null) return;
+
+                double distance = CalculateManhattanDistance(node, kdNode.Data);
+                if (edges.Count < maxNeighbors || distance < maxDistance)
+                {
+                    edges.Add(new Edge(node, kdNode.Data));
+                    if (edges.Count > maxNeighbors)
+                    {
+                        edges.Sort((a, b) => a.Weight.CompareTo(b.Weight));
+                        edges.RemoveAt(edges.Count - 1);
+                        maxDistance = edges.Last().Weight;
+                    }
+                }
+
+                KDNode primary = kdNode.VerticalSplit
+                    ? (node.X < kdNode.Data.X ? kdNode.Left : kdNode.Right)
+                    : (node.Y < kdNode.Data.Y ? kdNode.Left : kdNode.Right);
+                KDNode secondary = primary == kdNode.Left ? kdNode.Right : kdNode.Left;
+
+                NearestNeighbors(primary, node, maxNeighbors, edges, maxDistance);
+                if ((kdNode.VerticalSplit ? Math.Abs(node.X - kdNode.Data.X) : Math.Abs(node.Y - kdNode.Data.Y)) < maxDistance)
+                {
+                    NearestNeighbors(secondary, node, maxNeighbors, edges, maxDistance);
+                }
             }
 
             private double CalculateManhattanDistance(Node node1, Node node2)
@@ -542,28 +570,7 @@ namespace KSplittingNamespace
                 return Math.Abs(centerX1 - centerX2) + Math.Abs(centerY1 - centerY2);
             }
 
-            private void NearestNeighbors(KDNode kdNode, Node node, int maxNeighbors, List<Edge> edges, double maxDistance)
-            {
-                if (kdNode == null) return;
 
-                var dist = CalculateManhattanDistance(node, kdNode.Data);
-                if (edges.Count < maxNeighbors || dist < maxDistance)
-                {
-                    edges.Add(new Edge(node, kdNode.Data));
-                    if (edges.Count > maxNeighbors) edges.RemoveAt(edges.Count - 1);
-                    maxDistance = edges.Last().Weight;
-                }
-
-                // 确保不重复计算邻居
-                KDNode primary = kdNode.VerticalSplit
-                    ? (node.X < kdNode.Data.X ? kdNode.Left : kdNode.Right)
-                    : (node.Y < kdNode.Data.Y ? kdNode.Left : kdNode.Right);
-                KDNode secondary = primary == kdNode.Left ? kdNode.Right : kdNode.Left;
-
-                NearestNeighbors(primary, node, maxNeighbors, edges, maxDistance);
-                if ((kdNode.VerticalSplit ? Math.Abs(node.X - kdNode.Data.X) : Math.Abs(node.Y - kdNode.Data.Y)) < maxDistance)
-                    NearestNeighbors(secondary, node, maxNeighbors, edges, maxDistance);
-            }
         }
     }
 }
