@@ -26,7 +26,7 @@ namespace edaContest
             List<Node> triggers = new List<Node>();
             foreach (var ff in circuitData.FFInstances)
             {
-                triggers.Add(new Node(ff.Position.X, ff.Position.Y, 0, triggers.Count, circuitData.FFSize.Width, circuitData.FFSize.Height));
+                triggers.Add(new Node(ff.Position.X, ff.Position.Y, triggers.Count, circuitData.FFSize.Width, circuitData.FFSize.Height));
             }
 
             // 创建 KSplittingClustering 实例
@@ -38,7 +38,7 @@ namespace edaContest
             Console.WriteLine("开始执行聚类算法...");
 
             // 执行聚类算法
-            List<List<Node>> clusters = kSplitting.ExecuteClustering();
+            LinkedList<List<Node>> clusters = kSplitting.ExecuteClustering();
 
             // 将缓冲器实例添加到 CircuitData 中
             // circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));
