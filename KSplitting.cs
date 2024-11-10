@@ -40,7 +40,7 @@ namespace KSplittingNamespace
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
 
-        private readonly List<CircuitComponent> circuitComponents;
+        private  readonly List<CircuitComponent> CircuitComponents;
 
         public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, int obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
         {
@@ -80,7 +80,7 @@ namespace KSplittingNamespace
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
             // 计算各个聚类团的“中心点”，放置缓冲器
-            clusters = CheckRCValue(clusters);
+            // clusters = CheckRCValue(clusters);
             // var bufferInstances = PlaceBuffers(clusters);
             // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");

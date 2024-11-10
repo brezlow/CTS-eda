@@ -55,7 +55,7 @@ public class Node
     public int Height { get; } // 长方形的高度
 }
 
-class CircuitComponent
+public class CircuitComponent
 {
     public CircuitComponent(int x, int y, string name, int width, int height, int area)
     {
