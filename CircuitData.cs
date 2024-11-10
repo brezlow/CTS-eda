@@ -57,7 +57,7 @@ public class Node
 
 public class CircuitComponent
 {
-    public CircuitComponent(int x, int y, string name, int width, int height, int area)
+    public CircuitComponent(int x, int y, string name, int width, int height, double area)
     {
         X = x;
         Y = y;
@@ -67,7 +67,7 @@ public class CircuitComponent
         Area = area;
     }
     public string Name { get; set; }
-    public int Area { get; set; }
+    public double Area { get; set; }
 
     public int Width { get; }
     public int Height { get; }

@@ -35,14 +35,14 @@ namespace KSplittingNamespace
     public class KSplittingClustering
     {
         private readonly List<Node> nodes;
-        private readonly int width, length, FFSize_Height, FFSize_Width, BufferSize_Height, BufferSize_Width, obstacleArea, maxFanout, maxNetRC;
-        private readonly double alpha, NetUnitR, NetUnitC;
+        private readonly int width, length, FFSize_Height, FFSize_Width, BufferSize_Height, BufferSize_Width, maxFanout, maxNetRC;
+        private readonly double alpha, NetUnitR, NetUnitC, obstacleArea;
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
 
-        private  readonly List<CircuitComponent> CircuitComponents;
+        private readonly List<CircuitComponent> CircuitComponents;
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, int obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
+        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
         {
             this.nodes = nodes;
             this.width = width;
@@ -130,7 +130,7 @@ namespace KSplittingNamespace
         private double CalculateEL()
         {
             int numRegisters = nodes.Count;
-            return alpha * Math.Sqrt((width * length - obstacleArea) / (double)numRegisters);
+            return alpha * Math.Sqrt(((long)width * (long)length - (obstacleArea)) / (double)numRegisters);
         }
 
         private LinkedList<List<Node>> CutEdges(List<Edge> edges, double EL)
@@ -323,7 +323,7 @@ namespace KSplittingNamespace
                         //这里的位置 还没确认左下角坐标还是中心坐标，要检查，这里用的是中心坐标
                         Position = (buffer.X, buffer.Y),
                         ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
-                        AverageManhattanDistance = CalculateManhattanDistance(cluster, buffer)
+                        // AverageManhattanDistance = CalculateManhattanDistance(cluster, buffer)
                     };
                     bufferInstances.Add(bufferInstance);
                 }
@@ -373,61 +373,61 @@ namespace KSplittingNamespace
         }
 
 
-        public List<BufferInstance> PlaceBuffers(LinkedList<List<Node>> clusters)
-        {
-            var bufferInstances = new List<BufferInstance>();
-            var clustering = new CenterPointNamespace.Clustering();
+        // public List<BufferInstance> PlaceBuffers(LinkedList<List<Node>> clusters)
+        // {
+        //     var bufferInstances = new List<BufferInstance>();
+        //     var clustering = new CenterPointNamespace.Clustering();
 
-            foreach (var cluster in clusters)
-            {
-                var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
+        //     foreach (var cluster in clusters)
+        //     {
+        //         var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
 
-                // 检查缓冲器位置是否与已有元件重叠
-                if (IsOverlapping(centerPoint))
-                {
-                    // 如果重叠，尝试在附近找到一个不重叠的位置
-                    centerPoint = FindNonOverlappingPosition(centerPoint);
-                }
+        //         // 检查缓冲器位置是否与已有元件重叠
+        //         if (IsOverlapping(centerPoint))
+        //         {
+        //             // 如果重叠，尝试在附近找到一个不重叠的位置
+        //             centerPoint = FindNonOverlappingPosition(centerPoint);
+        //         }
 
-                var bufferInstance = new BufferInstance
-                {
-                    Name = $"BUF_{bufferInstances.Count + 1}",
-                    Position = (centerPoint.X, centerPoint.Y),
-                    // ContainedNodes = new List<Node>(cluster) // 记录聚类团中的元件
-                };
-                bufferInstances.Add(bufferInstance);
+        //         var bufferInstance = new BufferInstance
+        //         {
+        //             Name = $"BUF_{bufferInstances.Count + 1}",
+        //             Position = (centerPoint.X, centerPoint.Y),
+        //             // ContainedNodes = new List<Node>(cluster) // 记录聚类团中的元件
+        //         };
+        //         bufferInstances.Add(bufferInstance);
 
-                // 将原始的 Node 信息存储到全局数据结构中
-                // originalNodes.AddRange(cluster);
+        //         // 将原始的 Node 信息存储到全局数据结构中
+        //         // originalNodes.AddRange(cluster);
 
-                // 将中心点放置到一个新的 Node 中
-                var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(), bufferInstance.Name, BufferSize_Width, BufferSize_Height);
-                nodes.Add(newNode);
-            }
+        //         // 将中心点放置到一个新的 Node 中
+        //         var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(), bufferInstance.Name, BufferSize_Width, BufferSize_Height);
+        //         nodes.Add(newNode);
+        //     }
 
-            return bufferInstances;
-        }
-        private bool IsOverlapping(Node centerPoint)
-        {
-            foreach (var ff in circuitData.FFInstances)
-            {
-                if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, FFSize_Width, FFSize_Height)))
-                {
-                    return true;
-                }
-            }
+        //     return bufferInstances;
+        // }
+        // private bool IsOverlapping(Node centerPoint)
+        // {
+        //     foreach (var ff in circuitData.FFInstances)
+        //     {
+        //         if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, FFSize_Width, FFSize_Height)))
+        //         {
+        //             return true;
+        //         }
+        //     }
 
 
-            foreach (var buffer in circuitData.BufferInstances)
-            {
-                if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, BufferSize_Width, BufferSize_Height)))
-                {
-                    return true;
-                }
-            }
+        //     foreach (var buffer in circuitData.BufferInstances)
+        //     {
+        //         if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, BufferSize_Width, BufferSize_Height)))
+        //         {
+        //             return true;
+        //         }
+        //     }
 
-            return false;
-        }
+        //     return false;
+        // }
 
         private bool IsOverlapping(Node node1, Node node2)
         {
@@ -435,24 +435,24 @@ namespace KSplittingNamespace
                      node1.Y + node1.Height <= node2.Y || node2.Y + node2.Height <= node1.Y);
         }
 
-        private Node FindNonOverlappingPosition(Node centerPoint)
-        {
-            int step = 10; // 步长，可以根据需要调整
-            for (int dx = -step; dx <= step; dx += step)
-            {
-                for (int dy = -step; dy <= step; dy += step)
-                {
-                    var newCenterPoint = new Node(centerPoint.X + dx, centerPoint.Y + dy, 0, centerPoint.Width, centerPoint.Height);
-                    if (!IsOverlapping(newCenterPoint))
-                    {
-                        return newCenterPoint;
-                    }
-                }
-            }
+        // private Node FindNonOverlappingPosition(Node centerPoint)
+        // {
+        //     int step = 10; // 步长，可以根据需要调整
+        //     for (int dx = -step; dx <= step; dx += step)
+        //     {
+        //         for (int dy = -step; dy <= step; dy += step)
+        //         {
+        //             var newCenterPoint = new Node(centerPoint.X + dx, centerPoint.Y + dy, 0, centerPoint.Width, centerPoint.Height);
+        //             if (!IsOverlapping(newCenterPoint))
+        //             {
+        //                 return newCenterPoint;
+        //             }
+        //         }
+        //     }
 
-            // 如果找不到不重叠的位置，返回原位置
-            return centerPoint;
-        }
+        //     // 如果找不到不重叠的位置，返回原位置
+        //     return centerPoint;
+        // }
         private double CalculateBufferLoad(List<Node> cluster, Node buffer)
         {
             double rc = NetUnitR * NetUnitC;
@@ -490,25 +490,26 @@ namespace KSplittingNamespace
             {
                 parent = new int[size];
                 rank = new int[size];
-                for (int i = 0; i < size; i++) parent[i] = i;
+                for (int i = 0; i < size; i++)
+                {
+                    parent[i] = i;
+                    rank[i] = 0;
+                }
             }
 
             public int Find(int x)
             {
-                // 非递归实现路径压缩
-                int root = x;
-                while (root != parent[root])
+                if (x < 0 || x >= parent.Length)
                 {
-                    root = parent[root];
+                    throw new IndexOutOfRangeException($"Index {x} is out of range.");
                 }
-                // 路径压缩
-                while (x != root)
+
+                while (parent[x] != x)
                 {
-                    int next = parent[x];
-                    parent[x] = root;
-                    x = next;
+                    parent[x] = parent[parent[x]]; // 路径压缩
+                    x = parent[x];
                 }
-                return root;
+                return x;
             }
 
             public bool Union(int x, int y)
@@ -518,8 +519,14 @@ namespace KSplittingNamespace
 
                 if (rootX != rootY)
                 {
-                    if (rank[rootX] > rank[rootY]) parent[rootY] = rootX;
-                    else if (rank[rootX] < rank[rootY]) parent[rootX] = rootY;
+                    if (rank[rootX] > rank[rootY])
+                    {
+                        parent[rootY] = rootX;
+                    }
+                    else if (rank[rootX] < rank[rootY])
+                    {
+                        parent[rootX] = rootY;
+                    }
                     else
                     {
                         parent[rootY] = rootX;

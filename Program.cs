@@ -26,8 +26,7 @@ namespace edaContest
             List<Node> triggers = new List<Node>();
             foreach (var ff in circuitData.FFInstances)
             {
-                int triggerId = int.Parse(ff.Name.Substring(2));
-                triggers.Add(new Node(ff.Position.X, ff.Position.Y, triggerId, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height));
+                triggers.Add(new Node(ff.Position.X, ff.Position.Y, triggers.Count, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height));
             }
 
             // 建立所有元件结构
@@ -36,17 +35,19 @@ namespace edaContest
             // 将FF实例添加到CircuitComponents中
             foreach (var ff in circuitData.FFInstances)
             {
-                CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height));
-            }
+                CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height ));
+            }//这里给每个元件的面积乘上1e-4来减少溢出
 
             // 开始第一层聚类
             // 创建 KSplittingClustering 实例
-            double alpha = 400; // 根据需要设置 alpha 值
+            double alpha = 4; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             // 计算障碍物面积
-            int obstacleArea = CircuitComponents.Sum(component => component.Area);
+            double obstacleArea = CircuitComponents.Sum(component => component.Area);
+            Console.WriteLine($"障碍物面积: {obstacleArea}");
+
             int maxNetRC = (int)circuitData.MaxNetRC;
-            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height,circuitData.FFSize.Height,circuitData.FFSize.Width,circuitData.BufferSize.Height,circuitData.BufferSize.Width ,obstacleArea, alpha,circuitData.NetUnitR,circuitData.NetUnitC ,maxFanout, maxNetRC, maxFanout,CircuitComponents);
+            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, circuitData.FFSize.Height, circuitData.FFSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width, obstacleArea, alpha, circuitData.NetUnitR, circuitData.NetUnitC, maxFanout, maxNetRC, maxFanout, CircuitComponents);
 
             Console.WriteLine("开始执行聚类算法...");
 
