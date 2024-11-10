@@ -26,12 +26,25 @@ namespace edaContest
             List<Node> triggers = new List<Node>();
             foreach (var ff in circuitData.FFInstances)
             {
-                triggers.Add(new Node(ff.Position.X, ff.Position.Y, triggers.Count, circuitData.FFSize.Width, circuitData.FFSize.Height));
+                int triggerId = int.Parse(ff.Name.Substring(2));
+                triggers.Add(new Node(ff.Position.X, ff.Position.Y, triggerId, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height));
             }
 
+            // 建立所有元件结构
+            List<CircuitComponent> CircuitComponents = new List<CircuitComponent>();
+
+            // 将FF实例添加到CircuitComponents中
+            foreach (var ff in circuitData.FFInstances)
+            {
+                CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height));
+            }
+
+            // 开始第一层聚类
             // 创建 KSplittingClustering 实例
             double alpha = 400; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
+            // 计算障碍物面积
+            int obstacleArea = CircuitComponents.Sum(component => component.Area);
             int maxNetRC = (int)circuitData.MaxNetRC;
             KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC, maxFanout, circuitData);
 

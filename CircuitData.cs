@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Reflection.Metadata.Ecma335;
 
 // 电路数据类型, 用于存储电路布局信息
 public class CircuitData
@@ -35,11 +36,12 @@ public class BufferInstance
 
 public class Node
 {
-    public Node(int x, int y, int id, int width, int height)
+    public Node(int x, int y, int id, string name, int width, int height)
     {
         X = x;
         Y = y;
         Id = id;
+        Name = name;
         Width = width;
         Height = height;
     }
@@ -47,9 +49,30 @@ public class Node
     public int Id { get; }
     public int X { get; }
     public int Y { get; }
+    public string Name { get; set; }
     public double Delay { get; set; } // 平均延迟，用于中层聚类的补偿计算
     public int Width { get; }  // 长方形的宽度
     public int Height { get; } // 长方形的高度
+}
+
+class CircuitComponent
+{
+    public CircuitComponent(int x, int y, string name, int width, int height, int area)
+    {
+        X = x;
+        Y = y;
+        Name = name;
+        Width = width;
+        Height = height;
+        Area = area;
+    }
+    public string Name { get; set; }
+    public int Area { get; set; }
+
+    public int Width { get; }
+    public int Height { get; }
+    public int X { get; set; }
+    public int Y { get; set; }
 }
 
 class Net

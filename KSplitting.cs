@@ -40,7 +40,6 @@ namespace KSplittingNamespace
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
         private CircuitData circuitData;
-        private List<Node> originalNodes; // 全局数据结构，用于存储原始的 Node 信息
 
         public KSplittingClustering(List<Node> nodes, int width, int length, int obstacleArea, double alpha, int maxFanout, int maxNetRC, int maxEdgesPerNode, CircuitData circuitData)
         {
@@ -53,7 +52,6 @@ namespace KSplittingNamespace
             this.maxNetRC = maxNetRC;
             this.maxEdgesPerNode = maxEdgesPerNode;
             this.circuitData = circuitData;
-            this.originalNodes = new List<Node>(); // 初始化全局数据结构
 
             // 创建 KD 树以便高效查找最近邻节点
             kdTree = new KDTree(nodes);
@@ -317,8 +315,7 @@ namespace KSplittingNamespace
                         Name = $"BUF{clusterNumber}",
                         //这里的位置 还没确认左下角坐标还是中心坐标，要检查，这里用的是中心坐标
                         Position = (buffer.X, buffer.Y),
-                        //这里node的id没确定是不是用的FF的name，要检查
-                        ContainedNodeNames = cluster.Select(node => node.Id.ToString()).ToList(),
+                        ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
                         AverageManhattanDistance = CalculateManhattanDistance(cluster, buffer)
                     };
                     bufferInstances.Add(bufferInstance);
@@ -394,10 +391,10 @@ namespace KSplittingNamespace
                 bufferInstances.Add(bufferInstance);
 
                 // 将原始的 Node 信息存储到全局数据结构中
-                originalNodes.AddRange(cluster);
+                // originalNodes.AddRange(cluster);
 
                 // 将中心点放置到一个新的 Node 中
-                var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(), circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+                var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(),bufferInstance.Name, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
                 nodes.Add(newNode);
             }
 
