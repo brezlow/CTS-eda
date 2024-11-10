@@ -46,7 +46,7 @@ namespace edaContest
             // 计算障碍物面积
             int obstacleArea = CircuitComponents.Sum(component => component.Area);
             int maxNetRC = (int)circuitData.MaxNetRC;
-            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, 0, alpha, maxFanout, maxNetRC, maxFanout, circuitData);
+            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height,circuitData.FFSize.Height,circuitData.FFSize.Width,circuitData.BufferSize.Height,circuitData.BufferSize.Width ,obstacleArea, alpha,circuitData.NetUnitR,circuitData.NetUnitC ,maxFanout, maxNetRC, maxFanout,CircuitComponents);
 
             Console.WriteLine("开始执行聚类算法...");
 

@@ -35,23 +35,30 @@ namespace KSplittingNamespace
     public class KSplittingClustering
     {
         private readonly List<Node> nodes;
-        private readonly int width, length, obstacleArea, maxFanout, maxNetRC;
-        private readonly double alpha;
+        private readonly int width, length, FFSize_Height, FFSize_Width, BufferSize_Height, BufferSize_Width, obstacleArea, maxFanout, maxNetRC;
+        private readonly double alpha, NetUnitR, NetUnitC;
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
-        private CircuitData circuitData;
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int obstacleArea, double alpha, int maxFanout, int maxNetRC, int maxEdgesPerNode, CircuitData circuitData)
+        private readonly List<CircuitComponent> circuitComponents;
+
+        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, int obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
         {
             this.nodes = nodes;
             this.width = width;
             this.length = length;
+            this.FFSize_Height = FFSize_Height;
+            this.FFSize_Width = FFSize_Width;
+            this.NetUnitR = NetUnitR;
+            this.NetUnitC = NetUnitC;
+            this.BufferSize_Height = BufferSize_Height;
+            this.BufferSize_Width = BufferSize_Width;
             this.obstacleArea = obstacleArea;
             this.alpha = alpha;
             this.maxFanout = maxFanout;
             this.maxNetRC = maxNetRC;
             this.maxEdgesPerNode = maxEdgesPerNode;
-            this.circuitData = circuitData;
+            this.CircuitComponents = circuitComponents;
 
             // 创建 KD 树以便高效查找最近邻节点
             kdTree = new KDTree(nodes);
@@ -352,7 +359,7 @@ namespace KSplittingNamespace
 
             var clustering = new CenterPointNamespace.Clustering();
 
-            var CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+            var CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
 
             // 这里检查缓冲器位置是否与已有元件重叠，但是目前代码没有实现一个统一的数据结构来存储已有元件的位置信息
             // // 检查缓冲器位置是否与已有元件重叠
@@ -373,7 +380,7 @@ namespace KSplittingNamespace
 
             foreach (var cluster in clusters)
             {
-                var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+                var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
 
                 // 检查缓冲器位置是否与已有元件重叠
                 if (IsOverlapping(centerPoint))
@@ -394,7 +401,7 @@ namespace KSplittingNamespace
                 // originalNodes.AddRange(cluster);
 
                 // 将中心点放置到一个新的 Node 中
-                var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(),bufferInstance.Name, circuitData.BufferSize.Width, circuitData.BufferSize.Height);
+                var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(), bufferInstance.Name, BufferSize_Width, BufferSize_Height);
                 nodes.Add(newNode);
             }
 
@@ -404,7 +411,7 @@ namespace KSplittingNamespace
         {
             foreach (var ff in circuitData.FFInstances)
             {
-                if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, circuitData.FFSize.Width, circuitData.FFSize.Height)))
+                if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, FFSize_Width, FFSize_Height)))
                 {
                     return true;
                 }
@@ -413,7 +420,7 @@ namespace KSplittingNamespace
 
             foreach (var buffer in circuitData.BufferInstances)
             {
-                if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, circuitData.BufferSize.Width, circuitData.BufferSize.Height)))
+                if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, BufferSize_Width, BufferSize_Height)))
                 {
                     return true;
                 }
@@ -448,7 +455,7 @@ namespace KSplittingNamespace
         }
         private double CalculateBufferLoad(List<Node> cluster, Node buffer)
         {
-            double rc = circuitData.NetUnitR * circuitData.NetUnitC;
+            double rc = NetUnitR * NetUnitC;
             double load = 0.0;
 
             foreach (var node in cluster)
