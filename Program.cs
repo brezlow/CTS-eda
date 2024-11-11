@@ -38,6 +38,9 @@ namespace edaContest
                 CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height));
             }
 
+            // 建立全局Buffer元件结构
+            List<BufferInstance> TotalBuffer = new List<BufferInstance>();
+
             // 开始第一层聚类
             // 创建 KSplittingClustering 实例
             double alpha = 4.5; // 根据需要设置 alpha 值
@@ -47,12 +50,19 @@ namespace edaContest
             Console.WriteLine($"障碍物面积: {obstacleArea}");
 
             int maxNetRC = (int)circuitData.MaxNetRC;
-            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, circuitData.FFSize.Height, circuitData.FFSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width, obstacleArea, alpha, circuitData.NetUnitR, circuitData.NetUnitC, maxFanout, maxNetRC, maxFanout, CircuitComponents);
+            KSplittingClustering kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, circuitData.FFSize.Height, circuitData.FFSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width, obstacleArea, alpha, circuitData.NetUnitR, circuitData.NetUnitC, maxFanout, maxNetRC, maxFanout, CircuitComponents, TotalBuffer);
 
             Console.WriteLine("开始执行聚类算法...");
 
             // 执行聚类算法
             LinkedList<List<Node>> clusters = kSplitting.ExecuteClustering();
+
+            // 输出TotalBuffer
+            Console.WriteLine($"TotalBuffer数目:{TotalBuffer.Count}");
+            foreach (var buffer in TotalBuffer)
+            {
+                Console.WriteLine($"  Name: {buffer.Name}, Position: ({buffer.Position.X}, {buffer.Position.Y})");
+            }
 
             // 将缓冲器实例添加到 CircuitData 中
             // circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));

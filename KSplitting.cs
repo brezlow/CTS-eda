@@ -45,8 +45,9 @@ namespace KSplittingNamespace
         private Dictionary<int, List<Edge>> mstCache = new Dictionary<int, List<Edge>>();
 
         private readonly List<CircuitComponent> CircuitComponents;
+        private readonly List<BufferInstance> TotalBuffer;
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
+        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents, List<BufferInstance> totalBuffer)
         {
             this.nodes = nodes;
             this.width = width;
@@ -63,6 +64,7 @@ namespace KSplittingNamespace
             this.maxNetRC = maxNetRC;
             this.maxEdgesPerNode = maxEdgesPerNode;
             this.CircuitComponents = circuitComponents;
+            this.TotalBuffer = totalBuffer;
 
             // 创建 KD 树以便高效查找最近邻节点
             kdTree = new KDTree(nodes);
@@ -84,7 +86,7 @@ namespace KSplittingNamespace
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
             // 计算各个聚类团的“中心点”，放置缓冲器
-            // clusters = CheckRCValue(clusters);
+            clusters = CheckRCValue(clusters, TotalBuffer);
             // var bufferInstances = PlaceBuffers(clusters);
             // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
@@ -409,21 +411,20 @@ namespace KSplittingNamespace
                 if (bufferLoad <= maxNetRC)
                 {
                     validClusters.AddLast(cluster);
+                    int bufferPosition_width = buffer.X - (BufferSize_Width / 2);
+                    int bufferPosition_height = buffer.Y - (BufferSize_Height / 2);
 
                     // 创建新的 BufferInstance 并添加到 bufferInstances 列表中
                     var bufferInstance = new BufferInstance
                     {
                         //这里的名字要修改，生成的名字用全局bufferlist中的数量作为名字
-                        // 接下来要设立一个全局元件
                         Name = $"BUF{clusterNumber}",
-                        //这里的位置 还没确认左下角坐标还是中心坐标，要检查，这里用的是中心坐标
-                        Position = (buffer.X, buffer.Y),
+                        Position = (bufferPosition_width, bufferPosition_height),
                         ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
-                        // AverageManhattanDistance = CalculateManhattanDistance(cluster, buffer)
+                        AverageManhattanDistance = CalculateAverageManhattanDistance(cluster, buffer)
                     };
                     bufferInstances.Add(bufferInstance);
                 }
-                // 要考虑递归在这里的操作的性质，有必要拆分一下函数
                 else
                 {
                     // 如果 RC 值超过阈值，对该聚类分裂
@@ -450,6 +451,8 @@ namespace KSplittingNamespace
             return validClusters;
         }
 
+
+
         public Node GetCentetPointPosition(List<Node> cluster)
         {
 
@@ -457,98 +460,65 @@ namespace KSplittingNamespace
 
             var CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
 
-            // 这里检查缓冲器位置是否与已有元件重叠，但是目前代码没有实现一个统一的数据结构来存储已有元件的位置信息
-            // // 检查缓冲器位置是否与已有元件重叠
-            // if (IsOverlapping(CenterPointPosition))
-            // {
-            //     // 如果重叠，尝试在附近找到一个不重叠的位置
-            //     CenterPointPosition = FindNonOverlappingPosition(CenterPointPosition);
-            // }
+            // 检查缓冲器位置是否与已有元件重叠
+            if (IsOverlapping(CenterPointPosition))
+            {
+                // 如果重叠，尝试在附近找到一个不重叠的位置
+                CenterPointPosition = FindNonOverlappingPosition(CenterPointPosition);
+            }
 
             return CenterPointPosition;
         }
-
-
-        // public List<BufferInstance> PlaceBuffers(LinkedList<List<Node>> clusters)
-        // {
-        //     var bufferInstances = new List<BufferInstance>();
-        //     var clustering = new CenterPointNamespace.Clustering();
-
-        //     foreach (var cluster in clusters)
-        //     {
-        //         var centerPoint = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
-
-        //         // 检查缓冲器位置是否与已有元件重叠
-        //         if (IsOverlapping(centerPoint))
-        //         {
-        //             // 如果重叠，尝试在附近找到一个不重叠的位置
-        //             centerPoint = FindNonOverlappingPosition(centerPoint);
-        //         }
-
-        //         var bufferInstance = new BufferInstance
-        //         {
-        //             Name = $"BUF_{bufferInstances.Count + 1}",
-        //             Position = (centerPoint.X, centerPoint.Y),
-        //             // ContainedNodes = new List<Node>(cluster) // 记录聚类团中的元件
-        //         };
-        //         bufferInstances.Add(bufferInstance);
-
-        //         // 将原始的 Node 信息存储到全局数据结构中
-        //         // originalNodes.AddRange(cluster);
-
-        //         // 将中心点放置到一个新的 Node 中
-        //         var newNode = new Node(centerPoint.X, centerPoint.Y, bufferInstance.Name.GetHashCode(), bufferInstance.Name, BufferSize_Width, BufferSize_Height);
-        //         nodes.Add(newNode);
-        //     }
-
-        //     return bufferInstances;
-        // }
-        // private bool IsOverlapping(Node centerPoint)
-        // {
-        //     foreach (var ff in circuitData.FFInstances)
-        //     {
-        //         if (IsOverlapping(centerPoint, new Node(ff.Position.X, ff.Position.Y, 0, FFSize_Width, FFSize_Height)))
-        //         {
-        //             return true;
-        //         }
-        //     }
-
-
-        //     foreach (var buffer in circuitData.BufferInstances)
-        //     {
-        //         if (IsOverlapping(centerPoint, new Node(buffer.Position.X, buffer.Position.Y, 0, BufferSize_Width, BufferSize_Height)))
-        //         {
-        //             return true;
-        //         }
-        //     }
-
-        //     return false;
-        // }
-
-        private bool IsOverlapping(Node node1, Node node2)
+        private Node FindNonOverlappingPosition(Node centerPoint)
         {
-            return !(node1.X + node1.Width <= node2.X || node2.X + node2.Width <= node1.X ||
-                     node1.Y + node1.Height <= node2.Y || node2.Y + node2.Height <= node1.Y);
+            int step = 10; // 步长，可以根据需要调整
+            for (int dx = -step; dx <= step; dx += step)
+            {
+                for (int dy = -step; dy <= step; dy += step)
+                {
+                    var newCenterPoint = new Node(centerPoint.X + dx, centerPoint.Y + dy, centerPoint.Id, centerPoint.Name, centerPoint.Width, centerPoint.Height);
+
+                    if (!IsOverlapping(newCenterPoint))
+                    {
+                        return newCenterPoint;
+                    }
+                }
+            }
+
+            // 如果找不到不重叠的位置，返回原位置
+            return centerPoint;
+        }
+        private bool IsOverlapping(Node centerPoint)
+        {
+            foreach (var component in CircuitComponents)
+            {
+                if (IsOverlapping(centerPoint, component))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        // private Node FindNonOverlappingPosition(Node centerPoint)
-        // {
-        //     int step = 10; // 步长，可以根据需要调整
-        //     for (int dx = -step; dx <= step; dx += step)
-        //     {
-        //         for (int dy = -step; dy <= step; dy += step)
-        //         {
-        //             var newCenterPoint = new Node(centerPoint.X + dx, centerPoint.Y + dy, 0, centerPoint.Width, centerPoint.Height);
-        //             if (!IsOverlapping(newCenterPoint))
-        //             {
-        //                 return newCenterPoint;
-        //             }
-        //         }
-        //     }
+        private bool IsOverlapping(Node centerPoint, CircuitComponent component)
+        {
+            // 计算中心点对应的缓冲器的左下角和右上角坐标
+            double bufferLeft = centerPoint.X - BufferSize_Width / 2.0;
+            double bufferRight = centerPoint.X + BufferSize_Width / 2.0;
+            double bufferBottom = centerPoint.Y - BufferSize_Height / 2.0;
+            double bufferTop = centerPoint.Y + BufferSize_Height / 2.0;
 
-        //     // 如果找不到不重叠的位置，返回原位置
-        //     return centerPoint;
-        // }
+            // 计算元件的左下角和右上角坐标
+            double componentLeft = component.X;
+            double componentRight = component.X + component.Width;
+            double componentBottom = component.Y;
+            double componentTop = component.Y + component.Height;
+
+            // 判断是否重叠
+            return !(bufferRight <= componentLeft || bufferLeft >= componentRight ||
+                     bufferTop <= componentBottom || bufferBottom >= componentTop);
+        }
+
         private double CalculateBufferLoad(List<Node> cluster, Node buffer)
         {
             double rc = NetUnitR * NetUnitC;
@@ -570,6 +540,18 @@ namespace KSplittingNamespace
             double centerY2 = node2.Y + node2.Height / 2.0;
 
             return Math.Abs(centerX1 - centerX2) + Math.Abs(centerY1 - centerY2);
+        }
+        private double CalculateAverageManhattanDistance(List<Node> cluster, Node centerPoint)
+        {
+            double totalDistance = 0.0;
+            int nodeCount = cluster.Count;
+
+            foreach (var node in cluster)
+            {
+                totalDistance += CalculateManhattanDistance(node, centerPoint);
+            }
+
+            return totalDistance / nodeCount;
         }
 
 
