@@ -43,7 +43,7 @@ namespace edaContest
 
             // 开始第一层聚类
             // 创建 KSplittingClustering 实例
-            double alpha = 4.5; // 根据需要设置 alpha 值
+            double alpha = 6; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             // 计算障碍物面积
             double obstacleArea = CircuitComponents.Sum(component => component.Area);
@@ -59,34 +59,7 @@ namespace edaContest
             Console.WriteLine("聚类算法执行完毕");
             Console.WriteLine($"BottomBuffer数目:{bottomBuffer.Count}");
 
-            // // 输出TotalBuffer
-            // Console.WriteLine($"TotalBuffer数目:{TotalBuffer.Count}");
-            // foreach (var buffer in TotalBuffer)
-            // {
-            //     Console.WriteLine($"  Name: {buffer.Name}, Position: ({buffer.Position.X}, {buffer.Position.Y})");
-            // }
 
-            // 将缓冲器实例添加到 CircuitData 中
-            // circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));
-
-            // 输出缓冲器位置
-            // Console.WriteLine($"放置缓冲器数目: {circuitData.BufferInstances.Count}");
-            // foreach (var buffer in circuitData.BufferInstances)
-            // {
-            //     Console.WriteLine($"缓冲器 {buffer.Name}: ({buffer.Position.X}, {buffer.Position.Y})");
-            //     break;
-            // }
-
-            // 输出聚类结果
-            // foreach (var cluster in clusters)
-            // {
-            //     Console.WriteLine($"聚类团 {clusters.IndexOf(cluster) + 1}:");
-            //     foreach (var node in cluster)
-            //     {
-            //         Console.WriteLine($"  节点 {node.Id}: ({node.X}, {node.Y}) -> 缓冲器 {node.BufferName}");
-            //     }
-            //     break;
-            // }
 
             // FileWriter writer = new FileWriter();
             // writer.WriteOutput(outputFilePath, circuitData, nets);
