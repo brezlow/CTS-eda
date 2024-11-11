@@ -70,7 +70,7 @@ namespace KSplittingNamespace
             kdTree = new KDTree(nodes);
         }
 
-        public LinkedList<List<Node>> ExecuteClustering()
+        public List<Node> ExecuteClustering()
         {
             var edges = BuildSparseGraph();
             Console.WriteLine($"图边数: {edges.Count}");
@@ -86,12 +86,15 @@ namespace KSplittingNamespace
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
             // 计算各个聚类团的“中心点”，放置缓冲器
-            clusters = CheckRCValue(clusters, TotalBuffer);
+            var (validClusters, buffers) = ValidateClustersByRC(clusters);
+            var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
+
+
             // var bufferInstances = PlaceBuffers(clusters);
             // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
 
-            return clusters;
+            return updatedBuffers;
         }
 
         private List<Edge> BuildSparseGraph()
@@ -392,64 +395,118 @@ namespace KSplittingNamespace
 
 
         /// <summary>
-        /// 生成初步的中心点并检查RC负载
+        /// 检查每个聚类的RC负载是否符合要求，不符合则递归分裂，返回符合要求的聚类列表及其对应的buffer节点列表
         /// </summary>
-        /// <param name="clusters"></param>
-        /// <returns></returns>
-        private LinkedList<List<Node>> CheckRCValue(LinkedList<List<Node>> clusters, List<BufferInstance> bufferInstances, int depth = 0)
+        /// <param name="clusters">输入的聚类列表</param>
+        /// <param name="depth">当前递归深度</param>
+        /// <returns>元组：符合RC负载要求的聚类列表和对应的buffer节点列表</returns>
+        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, int depth = 0)
         {
-            var validClusters = new LinkedList<List<Node>>();
-            int clusterNumber = 0;
             const int MaxRecursionDepth = 10;
+            var validClusters = new LinkedList<List<Node>>();
+            var correspondingBuffers = new List<Node>();
 
-            foreach (var cluster in clusters)
+            // 锁对象用于同步对共享集合的访问
+            var validClustersLock = new object();
+            var buffersLock = new object();
+
+            // 使用缓存字典，避免重复计算中心点
+            var centerPointCache = new Dictionary<List<Node>, Node>();
+
+            Parallel.ForEach(clusters, cluster =>
             {
-                clusterNumber++;
-                var buffer = GetCentetPointPosition(cluster);
+                // 计算或获取缓存的中心点
+                Node buffer;
+                lock (centerPointCache)
+                {
+                    if (!centerPointCache.TryGetValue(cluster, out buffer))
+                    {
+                        buffer = GetCentetPointPosition(cluster);
+                        centerPointCache[cluster] = buffer;
+                    }
+                }
+
                 var bufferLoad = CalculateBufferLoad(cluster, buffer);
 
                 if (bufferLoad <= maxNetRC)
                 {
-                    validClusters.AddLast(cluster);
-                    int bufferPosition_width = buffer.X - (BufferSize_Width / 2);
-                    int bufferPosition_height = buffer.Y - (BufferSize_Height / 2);
-
-                    // 创建新的 BufferInstance 并添加到 bufferInstances 列表中
-                    var bufferInstance = new BufferInstance
-                    {
-                        //这里的名字要修改，生成的名字用全局bufferlist中的数量作为名字
-                        Name = $"BUF{clusterNumber}",
-                        Position = (bufferPosition_width, bufferPosition_height),
-                        ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
-                        AverageManhattanDistance = CalculateAverageManhattanDistance(cluster, buffer)
-                    };
-                    bufferInstances.Add(bufferInstance);
+                    // 加锁添加到 validClusters 和 correspondingBuffers
+                    lock (validClustersLock) validClusters.AddLast(cluster);
+                    lock (buffersLock) correspondingBuffers.Add(buffer);
                 }
-                else
+                else if (depth < MaxRecursionDepth)
                 {
-                    // 如果 RC 值超过阈值，对该聚类分裂
-                    Console.WriteLine($"聚类：{clusterNumber}距离{bufferLoad}发生一次分裂");
-                    if (depth < MaxRecursionDepth)
+                    Console.WriteLine($"聚类距离{bufferLoad}超过阈值，执行分裂");
+
+                    // 分裂聚类并递归验证
+                    var splitClusters = SplitCluster(cluster);
+                    var (checkedClusters, buffers) = ValidateClustersByRC(splitClusters, depth + 1);
+
+                    lock (validClustersLock)
                     {
-                        var splitClusters = SplitCluster(cluster);
-                        var checkedClusters = CheckRCValue(splitClusters, bufferInstances, depth + 1);
                         foreach (var checkedCluster in checkedClusters)
                         {
                             validClusters.AddLast(checkedCluster);
                         }
                     }
-                    else
+
+                    lock (buffersLock)
                     {
-                        // 如果达到最大递归深度，直接添加当前聚类
-                        validClusters.AddLast(cluster);
+                        correspondingBuffers.AddRange(buffers);
                     }
                 }
+                else
+                {
+                    // 达到最大递归深度，直接添加原始聚类和对应buffer
+                    lock (validClustersLock) validClusters.AddLast(cluster);
+                    lock (buffersLock) correspondingBuffers.Add(buffer);
+                }
+            });
+
+            return (validClusters, correspondingBuffers);
+        }
+
+
+        /// <summary>
+        /// 为每个有效聚类生成BufferInstance并返回对应的buffer节点列表
+        /// </summary>
+        /// <param name="validClusters">已符合RC负载要求的聚类列表</param>
+        /// <param name="buffers">与每个聚类对应的buffer节点列表</param>
+        /// <param name="bufferInstances">要更新的缓冲实例列表</param>
+        /// <returns>每个聚类对应的buffer节点列表</returns>
+        private List<Node> GenerateBufferInstances(LinkedList<List<Node>> validClusters, List<Node> buffers, List<BufferInstance> bufferInstances)
+        {
+            int clusterNumber = bufferInstances.Count + 1;
+
+            for (int i = 0; i < validClusters.Count; i++)
+            {
+                var cluster = validClusters.ElementAt(i);
+                var buffer = buffers[i];
+
+                // 更新 buffer 的 ID 和 Name，确保它们与 bufferInstance 的名称一致
+                buffer.Id = clusterNumber;
+                buffer.Name = $"BUF{clusterNumber}";
+
+                // 计算缓冲器的位置
+                int bufferPositionWidth = buffer.X - (BufferSize_Width / 2);
+                int bufferPositionHeight = buffer.Y - (BufferSize_Height / 2);
+
+                // 创建新的 BufferInstance
+                var bufferInstance = new BufferInstance
+                {
+                    Name = buffer.Name,  // 与 buffer 的名称保持一致
+                    Position = (bufferPositionWidth, bufferPositionHeight),
+                    ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
+                    AverageManhattanDistance = CalculateAverageManhattanDistance(cluster, buffer)
+                };
+
+                bufferInstances.Add(bufferInstance);
+                clusterNumber++; // 更新 clusterNumber
             }
 
-            //返回的数据还在想
-
-            return validClusters;
+            return buffers;
         }
+
 
 
 

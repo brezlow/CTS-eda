@@ -46,7 +46,7 @@ public class Node
         Height = height;
     }
 
-    public int Id { get; }
+    public int Id { get; set; }
     public int X { get; }
     public int Y { get; }
     public string Name { get; set; }

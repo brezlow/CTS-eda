@@ -55,14 +55,16 @@ namespace edaContest
             Console.WriteLine("开始执行聚类算法...");
 
             // 执行聚类算法
-            LinkedList<List<Node>> clusters = kSplitting.ExecuteClustering();
+            List<Node> bottomBuffer = kSplitting.ExecuteClustering();
+            Console.WriteLine("聚类算法执行完毕");
+            Console.WriteLine($"BottomBuffer数目:{bottomBuffer.Count}");
 
-            // 输出TotalBuffer
-            Console.WriteLine($"TotalBuffer数目:{TotalBuffer.Count}");
-            foreach (var buffer in TotalBuffer)
-            {
-                Console.WriteLine($"  Name: {buffer.Name}, Position: ({buffer.Position.X}, {buffer.Position.Y})");
-            }
+            // // 输出TotalBuffer
+            // Console.WriteLine($"TotalBuffer数目:{TotalBuffer.Count}");
+            // foreach (var buffer in TotalBuffer)
+            // {
+            //     Console.WriteLine($"  Name: {buffer.Name}, Position: ({buffer.Position.X}, {buffer.Position.Y})");
+            // }
 
             // 将缓冲器实例添加到 CircuitData 中
             // circuitData.BufferInstances.AddRange(kSplitting.PlaceBuffers(clusters));
