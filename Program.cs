@@ -35,12 +35,12 @@ namespace edaContest
             // 将FF实例添加到CircuitComponents中
             foreach (var ff in circuitData.FFInstances)
             {
-                CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height ));
-            }//这里给每个元件的面积乘上1e-4来减少溢出
+                CircuitComponents.Add(new CircuitComponent(ff.Position.X, ff.Position.Y, ff.Name, circuitData.FFSize.Width, circuitData.FFSize.Height, circuitData.FFSize.Width * circuitData.FFSize.Height));
+            }
 
             // 开始第一层聚类
             // 创建 KSplittingClustering 实例
-            double alpha = 4; // 根据需要设置 alpha 值
+            double alpha = 4.5; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             // 计算障碍物面积
             double obstacleArea = CircuitComponents.Sum(component => component.Area);

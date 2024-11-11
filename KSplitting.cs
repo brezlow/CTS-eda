@@ -40,6 +40,10 @@ namespace KSplittingNamespace
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
 
+        // 缓存字典
+        private Dictionary<int, List<Edge>> edgeCache = new Dictionary<int, List<Edge>>();
+        private Dictionary<int, List<Edge>> mstCache = new Dictionary<int, List<Edge>>();
+
         private readonly List<CircuitComponent> CircuitComponents;
 
         public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents)
@@ -184,7 +188,7 @@ namespace KSplittingNamespace
         private LinkedList<List<Node>> CheckAndFixClusters(LinkedList<List<Node>> clusters)
         {
             Console.WriteLine($"原始聚类数: {clusters.Count}");
-            var validClusters = new LinkedList<List<Node>>();
+            var validClusters = new List<List<Node>>();
             const int MaxRecursionDepth = 10;
 
             var currentNode = clusters.First;
@@ -193,16 +197,14 @@ namespace KSplittingNamespace
                 var cluster = currentNode.Value;
                 var nextNode = currentNode.Next;
 
-                // 先分裂超出扇出的聚类
+                // 分裂超出扇出的聚类
                 if (cluster.Count > maxFanout)
                 {
+                    Console.WriteLine($"聚类团数量:{cluster.Count}发生一次分裂");
                     clusters.Remove(currentNode);
-                    SplitAndCheckCluster(cluster, validClusters, clusters, 0, MaxRecursionDepth);
+                    SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
                 }
-                else
-                {
-                    validClusters.AddLast(cluster);
-                }
+
 
                 currentNode = nextNode;
             }
@@ -224,27 +226,48 @@ namespace KSplittingNamespace
         /// <param name="clusters"></param>
         /// <param name="depth"></param>
         /// <param name="maxDepth"></param>
-        private void SplitAndCheckCluster(List<Node> cluster, LinkedList<List<Node>> validClusters, LinkedList<List<Node>> clusters, int depth, int maxDepth)
+        private void SplitAndCheckCluster(List<Node> initialCluster, List<List<Node>> validClusters, LinkedList<List<Node>> clusters, int maxDepth)
         {
-            if (depth > maxDepth)
-            {
-                // 如果递归深度超过限制，直接返回原聚类团
-                validClusters.AddLast(cluster);
-                return;
-            }
+            Stack<(List<Node> cluster, int depth)> stack = new Stack<(List<Node>, int)>();
+            stack.Push((initialCluster, 0));
 
-            var splitClusters = SplitCluster(cluster);
-            foreach (var subCluster in splitClusters)
+            while (stack.Count > 0)
             {
-                if (subCluster.Count <= maxFanout)
+                var (cluster, depth) = stack.Pop();
+
+                if (depth > maxDepth)
                 {
-                    validClusters.AddLast(subCluster);
+                    validClusters.Add(cluster);
+                    ClearClusterCache(cluster);
+                    continue;
                 }
-                else
+
+                var splitClusters = SplitCluster(cluster);
+                cluster.Clear();
+                cluster = null;
+
+                foreach (var subCluster in splitClusters)
                 {
-                    SplitAndCheckCluster(subCluster, validClusters, clusters, depth + 1, maxDepth);
+                    if (subCluster.Count <= maxFanout)
+                    {
+                        validClusters.Add(subCluster);
+                        ClearClusterCache(subCluster);
+                    }
+                    else
+                    {
+                        stack.Push((subCluster, depth + 1));
+                        ClearClusterCache(subCluster);
+                    }
                 }
             }
+        }
+
+
+        private void ClearClusterCache(List<Node> cluster)
+        {
+            int clusterHash = cluster.GetHashCode();
+            edgeCache.Remove(clusterHash);
+            mstCache.Remove(clusterHash);
         }
 
 
@@ -256,12 +279,12 @@ namespace KSplittingNamespace
         private LinkedList<List<Node>> SplitCluster(List<Node> cluster)
         {
             // 计算边集并尝试构建最小生成树（MST）
-            var edges = BuildSparseGraphForCluster(cluster);
-            var mstEdges = KruskalMST(edges);
+            var edges = GetOrBuildEdges(cluster);
+            var mstEdges = GetOrBuildMST(cluster, edges);
 
             // 根据 MST 中的最长边尝试分裂
             double maxWeight = mstEdges.Max(edge => edge.Weight);
-            var newClusters = CutEdges(mstEdges, maxWeight);
+            var newClusters = SplitByRemovingMaxEdge(mstEdges, maxWeight);
 
             // 如果分裂后结果与原始聚类团相似，避免无意义的分裂，直接返回原聚类团
             if (newClusters.Count == 1 && newClusters.First().Count == cluster.Count)
@@ -273,6 +296,79 @@ namespace KSplittingNamespace
             return newClusters.Count > 0 ? new LinkedList<List<Node>>(newClusters) : new LinkedList<List<Node>>(new[] { cluster });
         }
 
+        private List<List<Node>> SplitByRemovingMaxEdge(List<Edge> mstEdges, double maxWeight)
+        {
+            // 找到最长的边并移除
+            var maxEdge = mstEdges.First(edge => edge.Weight == maxWeight);
+            mstEdges.Remove(maxEdge);
+
+            // 构建两个新的聚类
+            var cluster1 = new List<Node>();
+            var cluster2 = new List<Node>();
+            var visited = new HashSet<Node>();
+
+            // 使用 DFS 将节点分配到两个聚类中
+            DFSForSplit(maxEdge.Node1, mstEdges, visited, cluster1);
+            DFSForSplit(maxEdge.Node2, mstEdges, visited, cluster2);
+
+            return new List<List<Node>> { cluster1, cluster2 };
+        }
+
+        private void DFSForSplit(Node node, List<Edge> edges, HashSet<Node> visited, List<Node> cluster)
+        {
+            var stack = new Stack<Node>();
+            stack.Push(node);
+
+            while (stack.Count > 0)
+            {
+                var currentNode = stack.Pop();
+                if (!visited.Contains(currentNode))
+                {
+                    visited.Add(currentNode);
+                    cluster.Add(currentNode);
+
+                    foreach (var edge in edges)
+                    {
+                        if (edge.Node1 == currentNode && !visited.Contains(edge.Node2))
+                        {
+                            stack.Push(edge.Node2);
+                        }
+                        else if (edge.Node2 == currentNode && !visited.Contains(edge.Node1))
+                        {
+                            stack.Push(edge.Node1);
+                        }
+                    }
+                }
+            }
+        }
+
+        private List<Edge> GetOrBuildEdges(List<Node> cluster)
+        {
+            int clusterHash = cluster.GetHashCode(); // 获取 cluster 的哈希值
+            if (edgeCache.TryGetValue(clusterHash, out List<Edge> cachedEdges))
+            {
+                return cachedEdges; // 使用缓存的边集
+            }
+
+            // 如果没有缓存，构建边集并缓存
+            List<Edge> edges = BuildSparseGraphForCluster(cluster);
+            edgeCache[clusterHash] = edges;
+            return edges;
+        }
+
+        private List<Edge> GetOrBuildMST(List<Node> cluster, List<Edge> edges)
+        {
+            int clusterHash = cluster.GetHashCode(); // 获取 cluster 的哈希值
+            if (mstCache.TryGetValue(clusterHash, out List<Edge> cachedMST))
+            {
+                return cachedMST; // 使用缓存的 MST
+            }
+
+            // 如果没有缓存，计算 MST 并缓存
+            List<Edge> mst = KruskalMST(edges);
+            mstCache[clusterHash] = mst;
+            return mst;
+        }
 
         private List<Edge> BuildSparseGraphForCluster(List<Node> cluster)
         {
