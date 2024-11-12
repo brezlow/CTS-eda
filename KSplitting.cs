@@ -47,7 +47,9 @@ namespace KSplittingNamespace
         private readonly List<CircuitComponent> CircuitComponents;
         private readonly List<BufferInstance> TotalBuffer;
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents, List<BufferInstance> totalBuffer)
+        private readonly bool isBottomLayer;
+
+        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents, List<BufferInstance> totalBuffer, bool isBottomLayer = true)
         {
             this.nodes = nodes;
             this.width = width;
@@ -65,6 +67,7 @@ namespace KSplittingNamespace
             this.maxEdgesPerNode = maxEdgesPerNode;
             this.CircuitComponents = circuitComponents;
             this.TotalBuffer = totalBuffer;
+            this.isBottomLayer = isBottomLayer;
 
             // 创建 KD 树以便高效查找最近邻节点
             kdTree = new KDTree(nodes);
@@ -89,9 +92,6 @@ namespace KSplittingNamespace
             var (validClusters, buffers) = ValidateClustersByRC(clusters);
             var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
 
-
-            // var bufferInstances = PlaceBuffers(clusters);
-            // Console.WriteLine($"放置缓冲器数目: {bufferInstances.Count}");
             Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
 
             return updatedBuffers;
@@ -526,7 +526,7 @@ namespace KSplittingNamespace
 
             var clustering = new CenterPointNamespace.Clustering();
 
-            var CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
+            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
 
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))

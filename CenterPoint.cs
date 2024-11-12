@@ -31,7 +31,7 @@
             int initialY = (int)Math.Round(upperCluster.Average(node => node.Y));
 
             // 设置一个初始的中心点
-            Node bestCenterPoint = new Node(initialX, initialY, 0, "BUF",  BufferSize_width, BufferSize_height);
+            Node bestCenterPoint = new Node(initialX, initialY, 0, "BUF", BufferSize_width, BufferSize_height);
             double minDifferenceSum = double.MaxValue;
 
             // 在搜索半径 gamma 内寻找最优中心点位置
@@ -39,7 +39,7 @@
             {
                 for (int dy = -gamma; dy <= gamma; dy++)
                 {
-                    Node candidateCenter = new Node(initialX + dx, initialY + dy, 0,"BUF",  BufferSize_width,  BufferSize_height);
+                    Node candidateCenter = new Node(initialX + dx, initialY + dy, 0, "BUF", BufferSize_width, BufferSize_height);
                     double differenceSum = 0;
 
                     foreach (var node in upperCluster)
