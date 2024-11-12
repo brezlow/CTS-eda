@@ -34,6 +34,7 @@ class FileWriter
             sw.WriteLine("END COMPONENTS");
 
             // 写入连接关系 NETS 部分
+            sw.WriteLine($"NETS {data.BufferInstances.Count + 1} ;");
             int netIndex = 1;
             sw.WriteLine($"- net_clk ( CLK ) ( {data.BufferInstances[^1].Name} ) ;");
 
