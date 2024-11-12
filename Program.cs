@@ -58,6 +58,11 @@ namespace edaContest
             List<Node> bottomBuffer = kSplitting.ExecuteClustering();
             Console.WriteLine("聚类算法执行完毕");
             Console.WriteLine($"BottomBuffer数目:{bottomBuffer.Count}");
+            // 将第一次聚类的缓冲器添加到CircuitComponents中
+            foreach (var buffer in bottomBuffer)
+            {
+                CircuitComponents.Add(new CircuitComponent(buffer.X, buffer.Y, buffer.Name, circuitData.BufferSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width * circuitData.BufferSize.Height));
+            }
 
 
 
@@ -65,25 +70,5 @@ namespace edaContest
             // writer.WriteOutput(outputFilePath, circuitData, nets);
         }
 
-        static void PrintCircuitData(CircuitData data)
-        {
-            Console.WriteLine($"Units: {data.Units}");
-            Console.WriteLine($"Floorplan Size: {data.FloorplanSize.Width} x {data.FloorplanSize.Height}");
-            Console.WriteLine($"FF Size: {data.FFSize.Width} x {data.FFSize.Height}");
-            Console.WriteLine($"Buffer Size: {data.BufferSize.Width} x {data.BufferSize.Height}");
-            Console.WriteLine($"Clock Root Position: ({data.ClockRootPosition.X}, {data.ClockRootPosition.Y})");
-
-            Console.WriteLine("FF Instances:");
-            foreach (var ff in data.FFInstances)
-            {
-                Console.WriteLine($"  Name: {ff.Name}, Position: ({ff.Position.X}, {ff.Position.Y})");
-            }
-
-            Console.WriteLine("Buffer Instances:");
-            foreach (var buffer in data.BufferInstances)
-            {
-                Console.WriteLine($"  Name: {buffer.Name}, Position: ({buffer.Position.X}, {buffer.Position.Y})");
-            }
-        }
     }
 }

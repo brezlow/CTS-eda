@@ -196,25 +196,31 @@ namespace KSplittingNamespace
             var validClusters = new List<List<Node>>();
             const int MaxRecursionDepth = 10;
 
+            // 使用并行化处理每个需要分裂的聚类
+            var nodesToSplit = new List<LinkedListNode<List<Node>>>();
+
+            // 预先收集需要分裂的节点以降低内存操作
             var currentNode = clusters.First;
             while (currentNode != null)
             {
                 var cluster = currentNode.Value;
-                var nextNode = currentNode.Next;
-
-                // 分裂超出扇出的聚类
                 if (cluster.Count > maxFanout)
                 {
                     Console.WriteLine($"聚类团数量:{cluster.Count}发生一次分裂");
-                    clusters.Remove(currentNode);
-                    SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
+                    nodesToSplit.Add(currentNode);
                 }
-
-
-                currentNode = nextNode;
+                currentNode = currentNode.Next;
             }
 
-            // 将新的链表接上原本的检查后的链表
+            // 并行化分裂操作，提升性能
+            Parallel.ForEach(nodesToSplit, node =>
+            {
+                var cluster = node.Value;
+                clusters.Remove(node);
+                SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
+            });
+
+            // 合并分裂完成的有效聚类
             foreach (var validCluster in validClusters)
             {
                 clusters.AddLast(validCluster);
@@ -222,6 +228,7 @@ namespace KSplittingNamespace
 
             return clusters;
         }
+
 
         /// <summary>
         /// 递归分裂聚类团,检查扇出约束
@@ -403,6 +410,7 @@ namespace KSplittingNamespace
         private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, int depth = 0)
         {
             const int MaxRecursionDepth = 10;
+            double rc = NetUnitR * NetUnitC;
             var validClusters = new LinkedList<List<Node>>();
             var correspondingBuffers = new List<Node>();
 
@@ -425,8 +433,9 @@ namespace KSplittingNamespace
                         centerPointCache[cluster] = buffer;
                     }
                 }
-
-                var bufferLoad = CalculateBufferLoad(cluster, buffer);
+                var bufferDelay = CalculateBufferLoad(cluster, buffer);
+                buffer.Delay = bufferDelay;
+                var bufferLoad = 0.5 * bufferDelay * rc;
 
                 if (bufferLoad <= maxNetRC)
                 {
@@ -490,6 +499,8 @@ namespace KSplittingNamespace
                 // 计算缓冲器的位置
                 int bufferPositionWidth = buffer.X - (BufferSize_Width / 2);
                 int bufferPositionHeight = buffer.Y - (BufferSize_Height / 2);
+                buffer.X = bufferPositionWidth;
+                buffer.Y = bufferPositionHeight;
 
                 // 创建新的 BufferInstance
                 var bufferInstance = new BufferInstance
@@ -578,7 +589,6 @@ namespace KSplittingNamespace
 
         private double CalculateBufferLoad(List<Node> cluster, Node buffer)
         {
-            double rc = NetUnitR * NetUnitC;
             double load = 0.0;
 
             foreach (var node in cluster)
@@ -587,7 +597,7 @@ namespace KSplittingNamespace
                 load += Math.Pow(distance, 2);
             }
 
-            return 0.5 * rc * load;
+            return load;
         }
         private double CalculateManhattanDistance(Node node1, Node node2)
         {

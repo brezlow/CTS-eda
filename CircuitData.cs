@@ -47,8 +47,8 @@ public class Node
     }
 
     public int Id { get; set; }
-    public int X { get; }
-    public int Y { get; }
+    public int X { get; set; }
+    public int Y { get; set; }
     public string Name { get; set; }
     public double Delay { get; set; } // 平均延迟，用于中层聚类的补偿计算
     public int Width { get; }  // 长方形的宽度
