@@ -31,7 +31,7 @@ public class BufferInstance
     public required string Name { get; set; }
     public (int X, int Y) Position { get; set; }
     public List<string> ContainedNodeNames { get; set; } = new List<string>(); // 修改为包含子元件名称的字符串列表
-    public double AverageManhattanDistance { get; set; } // 添加表示该缓冲器聚类内部平均集线曼哈顿距离的属性
+    // public double AverageManhattanDistance { get; set; } // 添加表示该缓冲器聚类内部平均集线曼哈顿距离的属性
 }
 
 public class Node

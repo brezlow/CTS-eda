@@ -496,13 +496,13 @@ namespace KSplittingNamespace
                 buffer.X = bufferPositionWidth;
                 buffer.Y = bufferPositionHeight;
 
+
                 // 创建新的 BufferInstance
                 var bufferInstance = new BufferInstance
                 {
                     Name = buffer.Name,  // 与 buffer 的名称保持一致
                     Position = (bufferPositionWidth, bufferPositionHeight),
                     ContainedNodeNames = cluster.Select(node => node.Name).ToList(),
-                    AverageManhattanDistance = CalculateAverageManhattanDistance(cluster, buffer)
                 };
 
                 bufferInstances.Add(bufferInstance);
@@ -519,8 +519,9 @@ namespace KSplittingNamespace
         {
 
             var clustering = new CenterPointNamespace.Clustering();
+            double rc = NetUnitR * NetUnitC;
 
-            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, 10, BufferSize_Width, BufferSize_Height);
+            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
 
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))

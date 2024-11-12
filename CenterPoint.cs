@@ -21,16 +21,21 @@
             return new Node(centerX, centerY, 0, "BUF", BufferSize_width, BufferSize_height);
         }
 
-        public Node CalculateIntermediateLevelCenterPoint(List<Node> upperCluster, int gamma, int BufferSize_width, int BufferSize_height)
+        public Node CalculateIntermediateLevelCenterPoint(List<Node> upperCluster, double rc, int BufferSize_width, int BufferSize_height)
         {
             if (upperCluster == null || upperCluster.Count < 2)
                 throw new ArgumentException("聚类团需要至少两个节点以补偿时延差异");
 
-            // 初步中心点（均值计算）
+            // 计算初始中心点（均值法）
             int initialX = (int)Math.Round(upperCluster.Average(node => node.X));
             int initialY = (int)Math.Round(upperCluster.Average(node => node.Y));
 
-            // 设置一个初始的中心点
+            // 计算最大和最小延迟平方值，用于确定gamma
+            double maxDelaySquared = upperCluster.Max(node => node.Delay);
+            double minDelaySquared = upperCluster.Min(node => node.Delay);
+            int gamma = (int)Math.Round(Math.Sqrt(maxDelaySquared - minDelaySquared));
+
+            // 初始候选中心点
             Node bestCenterPoint = new Node(initialX, initialY, 0, "BUF", BufferSize_width, BufferSize_height);
             double minDifferenceSum = double.MaxValue;
 
@@ -44,17 +49,17 @@
 
                     foreach (var node in upperCluster)
                     {
-                        // (L_i^2)̅：当前节点的延迟平方
-                        double liSquared = Math.Pow(node.Delay, 2);
+                        // 当前节点的延迟平方
+                        double liSquared = 0.69 * 0.5 * rc * Math.Pow(node.Delay, 2);
 
-                        // (S_i^2)̅：候选中心点到当前节点的曼哈顿距离的平方
+                        // 候选中心点到当前节点的曼哈顿距离平方
                         double siSquared = Math.Pow(GetManhattanDistance(candidateCenter, node), 2);
 
-                        // 计算延迟差异的绝对值并累加
+                        // 累加延迟差异
                         differenceSum += Math.Abs(liSquared - siSquared);
                     }
 
-                    // 更新最优中心点位置
+                    // 更新最优中心点
                     if (differenceSum < minDifferenceSum)
                     {
                         minDifferenceSum = differenceSum;

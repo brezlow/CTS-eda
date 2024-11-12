@@ -65,26 +65,26 @@ namespace edaContest
             }
 
             // 循环进行聚类，直到得到最上一层聚类及 buffer 只有一个时结束聚类
-            // while (bottomBuffer.Count > 1)
-            // {
-            //     // 更新 triggers 为上一次聚类得到的 buffer
-            //     triggers = bottomBuffer;
+            while (bottomBuffer.Count > 1)
+            {
+                // 更新 triggers 为上一次聚类得到的 buffer
+                triggers = bottomBuffer;
 
-            //     // 创建新的 KSplittingClustering 实例
-            //     kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, circuitData.FFSize.Height, circuitData.FFSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width, obstacleArea, alpha, circuitData.NetUnitR, circuitData.NetUnitC, maxFanout, maxNetRC, maxFanout, CircuitComponents, TotalBuffer);
+                // 创建新的 KSplittingClustering 实例
+                kSplitting = new KSplittingClustering(triggers, circuitData.FloorplanSize.Width, circuitData.FloorplanSize.Height, circuitData.FFSize.Height, circuitData.FFSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width, obstacleArea, alpha, circuitData.NetUnitR, circuitData.NetUnitC, maxFanout, maxNetRC, maxFanout, CircuitComponents, TotalBuffer, false);
 
-            //     Console.WriteLine("开始执行聚类算法...");
+                Console.WriteLine("开始执行聚类算法...");
 
-            //     // 执行聚类算法
-            //     bottomBuffer = kSplitting.ExecuteClustering();
-            //     Console.WriteLine("聚类算法执行完毕");
-            //     Console.WriteLine($"Buffer数目:{bottomBuffer.Count}");
-            //     // 将本次聚类的缓冲器添加到 CircuitComponents 中
-            //     foreach (var buffer in bottomBuffer)
-            //     {
-            //         CircuitComponents.Add(new CircuitComponent(buffer.X, buffer.Y, buffer.Name, circuitData.BufferSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width * circuitData.BufferSize.Height));
-            //     }
-            // }
+                // 执行聚类算法
+                bottomBuffer = kSplitting.ExecuteClustering();
+                Console.WriteLine("聚类算法执行完毕");
+                Console.WriteLine($"Buffer数目:{bottomBuffer.Count}");
+                // 将本次聚类的缓冲器添加到 CircuitComponents 中
+                foreach (var buffer in bottomBuffer)
+                {
+                    CircuitComponents.Add(new CircuitComponent(buffer.X, buffer.Y, buffer.Name, circuitData.BufferSize.Width, circuitData.BufferSize.Height, circuitData.BufferSize.Width * circuitData.BufferSize.Height));
+                }
+            }
 
             circuitData.BufferInstances = TotalBuffer;
 
