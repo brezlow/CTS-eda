@@ -196,31 +196,25 @@ namespace KSplittingNamespace
             var validClusters = new List<List<Node>>();
             const int MaxRecursionDepth = 10;
 
-            // 使用并行化处理每个需要分裂的聚类
-            var nodesToSplit = new List<LinkedListNode<List<Node>>>();
-
-            // 预先收集需要分裂的节点以降低内存操作
             var currentNode = clusters.First;
             while (currentNode != null)
             {
                 var cluster = currentNode.Value;
+                var nextNode = currentNode.Next;
+
+                // 分裂超出扇出的聚类
                 if (cluster.Count > maxFanout)
                 {
                     Console.WriteLine($"聚类团数量:{cluster.Count}发生一次分裂");
-                    nodesToSplit.Add(currentNode);
+                    clusters.Remove(currentNode);
+                    SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
                 }
-                currentNode = currentNode.Next;
+
+
+                currentNode = nextNode;
             }
 
-            // 并行化分裂操作，提升性能
-            Parallel.ForEach(nodesToSplit, node =>
-            {
-                var cluster = node.Value;
-                clusters.Remove(node);
-                SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
-            });
-
-            // 合并分裂完成的有效聚类
+            // 将新的链表接上原本的检查后的链表
             foreach (var validCluster in validClusters)
             {
                 clusters.AddLast(validCluster);
@@ -526,7 +520,7 @@ namespace KSplittingNamespace
 
             var clustering = new CenterPointNamespace.Clustering();
 
-            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
+            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, 10, BufferSize_Width, BufferSize_Height);
 
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))
