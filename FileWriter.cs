@@ -4,7 +4,7 @@ using System.IO;
 
 class FileWriter
 {
-    public void WriteOutput(string filePath, CircuitData data, List<Net> nets)
+    public void WriteOutput(string filePath, CircuitData data)
     {
         using (StreamWriter sw = new StreamWriter(filePath))
         {
@@ -34,17 +34,21 @@ class FileWriter
             sw.WriteLine("END COMPONENTS");
 
             // 写入连接关系 NETS 部分
-            sw.WriteLine($"NETS {nets.Count} ;");
-            foreach (var net in nets)
+            int netIndex = 1;
+            sw.WriteLine($"- net_clk ( CLK ) ( {data.BufferInstances[^1].Name} ) ;");
+
+            for (int i = data.BufferInstances.Count - 1; i >= 0; i--)
             {
-                sw.Write($"- {net.Name} ( {net.Source} ) (");
-                for (int i = 0; i < net.Sinks.Count; i++)
+                var buf = data.BufferInstances[i];
+                sw.Write($"- net_buf{netIndex} ( {buf.Name} ) (");
+                for (int j = 0; j < buf.ContainedNodeNames.Count; j++)
                 {
-                    sw.Write($" {net.Sinks[i]}");
-                    if (i < net.Sinks.Count - 1)
+                    sw.Write($" {buf.ContainedNodeNames[j]}");
+                    if (j < buf.ContainedNodeNames.Count - 1)
                         sw.Write(" ");
                 }
                 sw.WriteLine(" ) ;");
+                netIndex++;
             }
             sw.WriteLine("END NETS");
         }
