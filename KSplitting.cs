@@ -35,7 +35,7 @@ namespace KSplittingNamespace
     public class KSplittingClustering
     {
         private readonly List<Node> nodes;
-        private readonly int width, length, FFSize_Height, FFSize_Width, BufferSize_Height, BufferSize_Width, maxFanout, maxNetRC;
+        private readonly int width, length, BufferSize_Height, BufferSize_Width, maxFanout, maxNetRC;
         private readonly double alpha, NetUnitR, NetUnitC, obstacleArea;
         private readonly int maxEdgesPerNode;
         private KDTree kdTree;
@@ -49,13 +49,11 @@ namespace KSplittingNamespace
 
         private readonly bool isBottomLayer;
 
-        public KSplittingClustering(List<Node> nodes, int width, int length, int FFSize_Height, int FFSize_Width, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents, List<BufferInstance> totalBuffer, bool isBottomLayer = true)
+        public KSplittingClustering(List<Node> nodes, int width, int length, int BufferSize_Height, int BufferSize_Width, double obstacleArea, double alpha, double NetUnitR, double NetUnitC, int maxFanout, int maxNetRC, int maxEdgesPerNode, List<CircuitComponent> circuitComponents, List<BufferInstance> totalBuffer, bool isBottomLayer = true)
         {
             this.nodes = nodes;
             this.width = width;
             this.length = length;
-            this.FFSize_Height = FFSize_Height;
-            this.FFSize_Width = FFSize_Width;
             this.NetUnitR = NetUnitR;
             this.NetUnitC = NetUnitC;
             this.BufferSize_Height = BufferSize_Height;
@@ -92,8 +90,6 @@ namespace KSplittingNamespace
             var (validClusters, buffers) = ValidateClustersByRC(clusters);
             var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
 
-            Console.WriteLine($"放置缓冲器数目: {clusters.Count}");
-
             return updatedBuffers;
         }
 
@@ -124,6 +120,7 @@ namespace KSplittingNamespace
             // 并行构建 MST 树的边集合
             Parallel.ForEach(edges, edge =>
             {
+                unionFind.EnsureCapacity(Math.Max(edge.Node1.Id, edge.Node2.Id) + 1);
                 if (unionFind.Union(edge.Node1.Id, edge.Node2.Id))
                 {
                     lock (mstEdges)
@@ -190,11 +187,15 @@ namespace KSplittingNamespace
         /// </summary>
         /// <param name="clusters"></param>
         /// <returns></returns>
+        /// <summary>
+        /// 检查聚类团是否满足扇出约束，如果不满足则分裂
+        /// </summary>
+        /// <param name="clusters"></param>
+        /// <returns></returns>
         private LinkedList<List<Node>> CheckAndFixClusters(LinkedList<List<Node>> clusters)
         {
             Console.WriteLine($"原始聚类数: {clusters.Count}");
             var validClusters = new List<List<Node>>();
-            const int MaxRecursionDepth = 10;
 
             var currentNode = clusters.First;
             while (currentNode != null)
@@ -207,9 +208,18 @@ namespace KSplittingNamespace
                 {
                     Console.WriteLine($"聚类团数量:{cluster.Count}发生一次分裂");
                     clusters.Remove(currentNode);
-                    SplitAndCheckCluster(cluster, validClusters, clusters, MaxRecursionDepth);
-                }
 
+                    // 使用新的分裂函数按倍数分裂
+                    var splitClusters = SplitClusterByFanout(cluster, maxFanout);
+                    foreach (var subCluster in splitClusters)
+                    {
+                        validClusters.Add(subCluster);
+                    }
+                }
+                else
+                {
+                    validClusters.Add(cluster); // 满足扇出，直接加入有效列表
+                }
 
                 currentNode = nextNode;
             }
@@ -222,6 +232,65 @@ namespace KSplittingNamespace
 
             return clusters;
         }
+
+        /// <summary>
+        /// 按倍数分裂聚类，使每个子聚类的数量小于等于 maxFanout
+        /// </summary>
+        /// <param name="cluster">初始聚类</param>
+        /// <param name="maxFanout">扇出上限</param>
+        /// <returns>分裂后的聚类列表</returns>
+        private List<List<Node>> SplitClusterByFanout(List<Node> cluster, int maxFanout)
+        {
+            int numSplits = (int)Math.Ceiling((double)cluster.Count / maxFanout); // 计算需要分裂的数量
+            var splitClusters = new List<List<Node>>(numSplits);
+
+            // 初始化子聚类
+            for (int i = 0; i < numSplits; i++)
+            {
+                splitClusters.Add(new List<Node>());
+            }
+
+            // 将节点均匀分配到每个子聚类
+            for (int i = 0; i < cluster.Count; i++)
+            {
+                splitClusters[i % numSplits].Add(cluster[i]);
+            }
+
+            // 为每个子聚类调整几何位置，以确保均衡且无交叉
+            AdjustClusterPositions(splitClusters);
+
+            return splitClusters;
+        }
+
+        /// <summary>
+        /// 调整子聚类的位置以保持几何均衡并避免交叉
+        /// </summary>
+        /// <param name="splitClusters">待调整的子聚类列表</param>
+        private void AdjustClusterPositions(List<List<Node>> splitClusters)
+        {
+            // 获取原始聚类的几何中心点
+            var centerX = splitClusters.SelectMany(c => c).Average(node => node.X);
+            var centerY = splitClusters.SelectMany(c => c).Average(node => node.Y);
+
+            // 基于每个子聚类的位置偏移量（模拟辐射状分布）进行位置调整
+            double angleStep = 2 * Math.PI / splitClusters.Count;
+            double radius = 10.0; // 调整距离
+
+            for (int i = 0; i < splitClusters.Count; i++)
+            {
+                double angle = i * angleStep;
+                double offsetX = centerX + radius * Math.Cos(angle);
+                double offsetY = centerY + radius * Math.Sin(angle);
+
+                // 为子聚类中的每个节点应用位置偏移
+                foreach (var node in splitClusters[i])
+                {
+                    node.X += (int)offsetX;
+                    node.Y += (int)offsetY;
+                }
+            }
+        }
+
 
 
         /// <summary>
@@ -623,23 +692,23 @@ namespace KSplittingNamespace
         /// </summary>
         public class UnionFind
         {
-            private int[] parent;
-            private int[] rank;
+            private List<int> parent;
+            private List<int> rank;
 
             public UnionFind(int size)
             {
-                parent = new int[size];
-                rank = new int[size];
+                parent = new List<int>(size);
+                rank = new List<int>(size);
                 for (int i = 0; i < size; i++)
                 {
-                    parent[i] = i;
-                    rank[i] = 0;
+                    parent.Add(i);
+                    rank.Add(0);
                 }
             }
 
             public int Find(int x)
             {
-                if (x < 0 || x >= parent.Length)
+                if (x < 0 || x >= parent.Count)
                 {
                     throw new IndexOutOfRangeException($"Index {x} is out of range.");
                 }
@@ -675,6 +744,15 @@ namespace KSplittingNamespace
                     return true;
                 }
                 return false;
+            }
+
+            public void EnsureCapacity(int size)
+            {
+                while (parent.Count < size)
+                {
+                    parent.Add(parent.Count);
+                    rank.Add(0);
+                }
             }
         }
 
