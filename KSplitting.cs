@@ -486,6 +486,11 @@ namespace KSplittingNamespace
 
             Parallel.ForEach(clusters, cluster =>
             {
+                if (cluster == null || cluster.Count == 0)
+                {
+                    return;
+                }
+
                 // 计算或获取缓存的中心点
                 Node buffer;
                 lock (centerPointCache)
