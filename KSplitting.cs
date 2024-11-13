@@ -117,10 +117,15 @@ namespace KSplittingNamespace
             var mstEdges = new List<Edge>();
             var unionFind = new UnionFind(nodes.Count);
 
+            // 确保 UnionFind 对象的容量足够大
+            foreach (var edge in edges)
+            {
+                unionFind.EnsureCapacity(Math.Max(edge.Node1.Id, edge.Node2.Id) + 1);
+            }
+
             // 并行构建 MST 树的边集合
             Parallel.ForEach(edges, edge =>
             {
-                unionFind.EnsureCapacity(Math.Max(edge.Node1.Id, edge.Node2.Id) + 1);
                 if (unionFind.Union(edge.Node1.Id, edge.Node2.Id))
                 {
                     lock (mstEdges)
