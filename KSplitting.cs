@@ -102,7 +102,7 @@ namespace KSplittingNamespace
                 combinedClusters.AddLast(combinedCluster);
 
                 // 检查 RC 负载并进行必要的分裂
-                var (validClusters, buffers) = ValidateClustersByRC(combinedClusters,hebin);
+                var (validClusters, buffers) = ValidateClustersByRC(combinedClusters, hebin);
                 var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
 
                 // 如果经过检查和分裂后，buffer 数目仍然小于等于 10，直接返回
@@ -500,7 +500,7 @@ namespace KSplittingNamespace
         /// <param name="clusters">输入的聚类列表</param>
         /// <param name="depth">当前递归深度</param>
         /// <returns>元组：符合RC负载要求的聚类列表和对应的buffer节点列表</returns>
-        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters,bool hebin)
+        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, bool hebin = false)
         {
             const int MaxRecursionDepth = 10;
             double rc = NetUnitR * NetUnitC;
