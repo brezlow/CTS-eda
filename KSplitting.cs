@@ -475,12 +475,8 @@ namespace KSplittingNamespace
         {
             const int MaxRecursionDepth = 10;
             double rc = NetUnitR * NetUnitC;
-            var validClusters = new LinkedList<List<Node>>();
-            var correspondingBuffers = new List<Node>();
-
-            // 锁对象用于同步对共享集合的访问
-            var validClustersLock = new object();
-            var buffersLock = new object();
+            var validClusters = new ConcurrentBag<List<Node>>();
+            var correspondingBuffers = new ConcurrentBag<Node>();
 
             // 使用缓存字典，避免重复计算中心点
             var centerPointCache = new ConcurrentDictionary<List<Node>, Node>();
@@ -493,25 +489,16 @@ namespace KSplittingNamespace
                 }
 
                 // 计算或获取缓存的中心点
-                Node buffer;
-                lock (centerPointCache)
-                {
-                    if (!centerPointCache.TryGetValue(cluster, out buffer))
-                    {
-                        buffer = GetCentetPointPosition(cluster);
-                        centerPointCache[cluster] = buffer;
-                    }
-                }
+                var buffer = centerPointCache.GetOrAdd(cluster, GetCentetPointPosition);
                 var bufferDelay = CalculateBufferLoad(cluster, buffer);
                 buffer.Delay = bufferDelay;
                 var bufferLoad = 0.5 * bufferDelay * rc;
 
                 if (bufferLoad <= maxNetRC)
                 {
-                    if (isBottomLayer == false) Console.WriteLine("聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
-                    // 加锁添加到 validClusters 和 correspondingBuffers
-                    lock (validClustersLock) validClusters.AddLast(cluster);
-                    lock (buffersLock) correspondingBuffers.Add(buffer);
+                    if (isBottomLayer == false) Console.WriteLine($"聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
+                    validClusters.Add(cluster);
+                    correspondingBuffers.Add(buffer);
                 }
                 else if (depth < MaxRecursionDepth)
                 {
@@ -521,30 +508,26 @@ namespace KSplittingNamespace
                     var splitClusters = SplitCluster(cluster);
                     var (checkedClusters, buffers) = ValidateClustersByRC(splitClusters, depth + 1);
 
-                    lock (validClustersLock)
+                    foreach (var checkedCluster in checkedClusters)
                     {
-                        foreach (var checkedCluster in checkedClusters)
-                        {
-                            validClusters.AddLast(checkedCluster);
-                        }
+                        validClusters.Add(checkedCluster);
                     }
 
-                    lock (buffersLock)
+                    foreach (var buf in buffers)
                     {
-                        correspondingBuffers.AddRange(buffers);
+                        correspondingBuffers.Add(buf);
                     }
                 }
                 else
                 {
                     // 达到最大递归深度，直接添加原始聚类和对应buffer
-                    lock (validClustersLock) validClusters.AddLast(cluster);
-                    lock (buffersLock) correspondingBuffers.Add(buffer);
+                    validClusters.Add(cluster);
+                    correspondingBuffers.Add(buffer);
                 }
             });
 
-            return (validClusters, correspondingBuffers);
+            return (new LinkedList<List<Node>>(validClusters), correspondingBuffers.ToList());
         }
-
 
         /// <summary>
         /// 为每个有效聚类生成BufferInstance并返回对应的buffer节点列表
@@ -600,7 +583,7 @@ namespace KSplittingNamespace
 
             var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
 
-            Console.WriteLine("成功");
+            if (isBottomLayer == false) Console.WriteLine("成功");
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))
             {
