@@ -507,6 +507,7 @@ namespace KSplittingNamespace
 
                 if (bufferLoad <= maxNetRC)
                 {
+                    if (isBottomLayer == false) Console.WriteLine("聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
                     // 加锁添加到 validClusters 和 correspondingBuffers
                     lock (validClustersLock) validClusters.AddLast(cluster);
                     lock (buffersLock) correspondingBuffers.Add(buffer);
