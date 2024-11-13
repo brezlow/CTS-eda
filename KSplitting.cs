@@ -469,7 +469,7 @@ namespace KSplittingNamespace
         /// <param name="clusters">输入的聚类列表</param>
         /// <param name="depth">当前递归深度</param>
         /// <returns>元组：符合RC负载要求的聚类列表和对应的buffer节点列表</returns>
-        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, int depth = 0)
+        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters)
         {
             const int MaxRecursionDepth = 10;
             double rc = NetUnitR * NetUnitC;
@@ -483,11 +483,20 @@ namespace KSplittingNamespace
             // 使用缓存字典，避免重复计算中心点
             var centerPointCache = new Dictionary<List<Node>, Node>();
 
-            Parallel.ForEach(clusters, cluster =>
+            var stack = new Stack<(List<Node> cluster, int depth)>();
+
+            foreach (var cluster in clusters)
             {
+                stack.Push((cluster, 0));
+            }
+
+            while (stack.Count > 0)
+            {
+                var (cluster, depth) = stack.Pop();
+
                 if (cluster == null || cluster.Count == 0)
                 {
-                    return;
+                    continue;
                 }
 
                 // 计算或获取缓存的中心点
@@ -506,7 +515,7 @@ namespace KSplittingNamespace
 
                 if (bufferLoad <= maxNetRC)
                 {
-                    if (isBottomLayer == false) Console.WriteLine("聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
+                    if (isBottomLayer == false) Console.WriteLine($"聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
                     // 加锁添加到 validClusters 和 correspondingBuffers
                     lock (validClustersLock) validClusters.AddLast(cluster);
                     lock (buffersLock) correspondingBuffers.Add(buffer);
@@ -517,19 +526,9 @@ namespace KSplittingNamespace
 
                     // 分裂聚类并递归验证
                     var splitClusters = SplitCluster(cluster);
-                    var (checkedClusters, buffers) = ValidateClustersByRC(splitClusters, depth + 1);
-
-                    lock (validClustersLock)
+                    foreach (var splitCluster in splitClusters)
                     {
-                        foreach (var checkedCluster in checkedClusters)
-                        {
-                            validClusters.AddLast(checkedCluster);
-                        }
-                    }
-
-                    lock (buffersLock)
-                    {
-                        correspondingBuffers.AddRange(buffers);
+                        stack.Push((splitCluster, depth + 1));
                     }
                 }
                 else
@@ -538,7 +537,7 @@ namespace KSplittingNamespace
                     lock (validClustersLock) validClusters.AddLast(cluster);
                     lock (buffersLock) correspondingBuffers.Add(buffer);
                 }
-            });
+            }
 
             return (validClusters, correspondingBuffers);
         }
