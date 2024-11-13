@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Collections.Concurrent;
 
 namespace KSplittingNamespace
 {
@@ -464,7 +463,6 @@ namespace KSplittingNamespace
             return edges;
         }
 
-
         /// <summary>
         /// 检查每个聚类的RC负载是否符合要求，不符合则递归分裂，返回符合要求的聚类列表及其对应的buffer节点列表
         /// </summary>
@@ -475,11 +473,15 @@ namespace KSplittingNamespace
         {
             const int MaxRecursionDepth = 10;
             double rc = NetUnitR * NetUnitC;
-            var validClusters = new ConcurrentBag<List<Node>>();
-            var correspondingBuffers = new ConcurrentBag<Node>();
+            var validClusters = new LinkedList<List<Node>>();
+            var correspondingBuffers = new List<Node>();
+
+            // 锁对象用于同步对共享集合的访问
+            var validClustersLock = new object();
+            var buffersLock = new object();
 
             // 使用缓存字典，避免重复计算中心点
-            var centerPointCache = new ConcurrentDictionary<List<Node>, Node>();
+            var centerPointCache = new Dictionary<List<Node>, Node>();
 
             Parallel.ForEach(clusters, cluster =>
             {
@@ -489,16 +491,25 @@ namespace KSplittingNamespace
                 }
 
                 // 计算或获取缓存的中心点
-                var buffer = centerPointCache.GetOrAdd(cluster, GetCentetPointPosition);
+                Node buffer;
+                lock (centerPointCache)
+                {
+                    if (!centerPointCache.TryGetValue(cluster, out buffer))
+                    {
+                        buffer = GetCentetPointPosition(cluster);
+                        centerPointCache[cluster] = buffer;
+                    }
+                }
                 var bufferDelay = CalculateBufferLoad(cluster, buffer);
                 buffer.Delay = bufferDelay;
                 var bufferLoad = 0.5 * bufferDelay * rc;
 
                 if (bufferLoad <= maxNetRC)
                 {
-                    if (isBottomLayer == false) Console.WriteLine($"聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
-                    validClusters.Add(cluster);
-                    correspondingBuffers.Add(buffer);
+                    if (isBottomLayer == false) Console.WriteLine("聚类距离{bufferLoad}符合阈值，添加到有效聚类列表");
+                    // 加锁添加到 validClusters 和 correspondingBuffers
+                    lock (validClustersLock) validClusters.AddLast(cluster);
+                    lock (buffersLock) correspondingBuffers.Add(buffer);
                 }
                 else if (depth < MaxRecursionDepth)
                 {
@@ -508,25 +519,28 @@ namespace KSplittingNamespace
                     var splitClusters = SplitCluster(cluster);
                     var (checkedClusters, buffers) = ValidateClustersByRC(splitClusters, depth + 1);
 
-                    foreach (var checkedCluster in checkedClusters)
+                    lock (validClustersLock)
                     {
-                        validClusters.Add(checkedCluster);
+                        foreach (var checkedCluster in checkedClusters)
+                        {
+                            validClusters.AddLast(checkedCluster);
+                        }
                     }
 
-                    foreach (var buf in buffers)
+                    lock (buffersLock)
                     {
-                        correspondingBuffers.Add(buf);
+                        correspondingBuffers.AddRange(buffers);
                     }
                 }
                 else
                 {
                     // 达到最大递归深度，直接添加原始聚类和对应buffer
-                    validClusters.Add(cluster);
-                    correspondingBuffers.Add(buffer);
+                    lock (validClustersLock) validClusters.AddLast(cluster);
+                    lock (buffersLock) correspondingBuffers.Add(buffer);
                 }
             });
 
-            return (new LinkedList<List<Node>>(validClusters), correspondingBuffers.ToList());
+            return (validClusters, correspondingBuffers);
         }
 
         /// <summary>
