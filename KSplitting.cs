@@ -603,12 +603,16 @@ namespace KSplittingNamespace
             {
                 if (cluster.Count < 2)
                 {
-                    // 如果聚类团节点数少于两个，返回一个默认的中心点
-                    CenterPointPosition = new Node(0, 0, 0, "BUF", BufferSize_Width, BufferSize_Height);
+                    // 如果聚类团节点数少于两个，返回该节点旁边一点距离的点
+                    var singleNode = cluster.First();
+                    CenterPointPosition = new Node(singleNode.X + 1, singleNode.Y + 1, 0, "BUF", BufferSize_Width, BufferSize_Height);
+
                 }
                 else
                 {
+                    Console.WriteLine("中层聚类获取中");
                     CenterPointPosition = clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
+                    Console.WriteLine("中层聚类获取完毕");
                 }
             }
 
