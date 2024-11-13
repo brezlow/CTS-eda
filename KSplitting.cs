@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace KSplittingNamespace
 {
@@ -482,7 +483,7 @@ namespace KSplittingNamespace
             var buffersLock = new object();
 
             // 使用缓存字典，避免重复计算中心点
-            var centerPointCache = new Dictionary<List<Node>, Node>();
+            var centerPointCache = new ConcurrentDictionary<List<Node>, Node>();
 
             Parallel.ForEach(clusters, cluster =>
             {
@@ -592,12 +593,14 @@ namespace KSplittingNamespace
 
         public Node GetCentetPointPosition(List<Node> cluster)
         {
+            if (isBottomLayer == false) Console.WriteLine("中层获取中心点");
 
             var clustering = new CenterPointNamespace.Clustering();
             double rc = NetUnitR * NetUnitC;
 
             var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
 
+            Console.WriteLine("成功");
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))
             {
