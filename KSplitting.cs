@@ -105,7 +105,7 @@ namespace KSplittingNamespace
                 var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
 
                 // 如果经过检查和分裂后，buffer 数目仍然小于等于 10，直接返回
-                if (updatedBuffers.Count <= 10)
+                if (updatedBuffers.Count <= maxFanout)
                 {
                     return updatedBuffers;
                 }
