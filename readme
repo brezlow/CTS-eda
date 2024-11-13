@@ -1,0 +1,2 @@
+执行方式：
+./edaContest -def_file ${电路文件路径} -constraint ${约束文件路径} -output solution.def

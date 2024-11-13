@@ -94,7 +94,7 @@ namespace KSplittingNamespace
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
             // 如果聚类数小于等于 10，直接合并成一个大的聚类
-            if (clusters.Count <= 10)
+            if (clusters.Count <= maxFanout)
             {
                 bool hebin = true;
                 var combinedCluster = clusters.SelectMany(cluster => cluster).ToList();
