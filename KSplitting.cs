@@ -594,7 +594,23 @@ namespace KSplittingNamespace
             var clustering = new CenterPointNamespace.Clustering();
             double rc = NetUnitR * NetUnitC;
 
-            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
+            Node CenterPointPosition;
+            if (isBottomLayer)
+            {
+                CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
+            }
+            else
+            {
+                if (cluster.Count < 2)
+                {
+                    // 如果聚类团节点数少于两个，返回一个默认的中心点
+                    CenterPointPosition = new Node(0, 0, 0, "BUF", BufferSize_Width, BufferSize_Height);
+                }
+                else
+                {
+                    CenterPointPosition = clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
+                }
+            }
 
             if (isBottomLayer == false) Console.WriteLine("成功");
             // 检查缓冲器位置是否与已有元件重叠
@@ -606,6 +622,7 @@ namespace KSplittingNamespace
 
             return CenterPointPosition;
         }
+
         private Node FindNonOverlappingPosition(Node centerPoint)
         {
             int step = 10; // 步长，可以根据需要调整
