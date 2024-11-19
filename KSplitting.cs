@@ -648,7 +648,22 @@ namespace KSplittingNamespace
                 CenterPointPosition = FindNonOverlappingPosition(CenterPointPosition);
             }
 
+            // 检查缓冲器位置是否超出电路面积
+            CenterPointPosition = EnsureWithinCircuitBounds(CenterPointPosition);
+
             return CenterPointPosition;
+        }
+
+        private Node EnsureWithinCircuitBounds(Node centerPoint)
+        {
+            int halfBufferWidth = BufferSize_Width / 2;
+            int halfBufferHeight = BufferSize_Height / 2;
+
+            // 确保缓冲器位置在电路面积范围内
+            int adjustedX = Math.Max(halfBufferWidth, Math.Min(centerPoint.X, width - halfBufferWidth));
+            int adjustedY = Math.Max(halfBufferHeight, Math.Min(centerPoint.Y, length - halfBufferHeight));
+
+            return new Node(adjustedX, adjustedY, centerPoint.Id, centerPoint.Name, centerPoint.Width, centerPoint.Height);
         }
 
         private Node FindNonOverlappingPosition(Node centerPoint)
