@@ -8,7 +8,7 @@
         /// </summary>
         /// <param name="cluster">最底层聚类团中的节点列表</param>
         /// <returns>返回计算得到的“中心点”节点</returns>
-        public Node CalculateBottomLevelCenterPoint(List<Node> cluster, int BufferSize_width, int BufferSize_height)
+        public Node CalculateBottomLevelCenterPoint(List<Node> cluster, int BufferSize_width, int BufferSize_height,int width, int length)
         {
             if (cluster == null || cluster.Count == 0)
                 throw new ArgumentException("聚类团不能为空");
@@ -16,6 +16,17 @@
             // 计算横纵坐标的均值，并四舍五入为整数
             int centerX = (int)Math.Round(cluster.Average(node => node.X));
             int centerY = (int)Math.Round(cluster.Average(node => node.Y));
+
+            // 检查缓冲器位置是否超出电路面积
+            if (centerX < 0 || centerY < 0 || centerX > width || centerY > length)
+            {
+                int halfBufferWidth = BufferSize_width / 2;
+                int halfBufferHeight = BufferSize_height / 2;
+
+                // 确保缓冲器位置在电路面积范围内
+                centerX = Math.Max(halfBufferWidth, Math.Min(centerX, width - halfBufferWidth));
+                centerY = Math.Max(halfBufferHeight, Math.Min(centerY, length - halfBufferHeight));
+            }
 
             // 假设缓冲器的尺寸为 (0, 0) 或根据实际情况调整
             return new Node(centerX, centerY, 0, "BUF", BufferSize_width, BufferSize_height);
