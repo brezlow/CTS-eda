@@ -624,7 +624,7 @@ namespace KSplittingNamespace
             Node CenterPointPosition;
             if (isBottomLayer)
             {
-                CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height,width,length);
+                CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height, width, length);
             }
             else
             {
@@ -648,18 +648,18 @@ namespace KSplittingNamespace
                 CenterPointPosition = FindNonOverlappingPosition(CenterPointPosition);
             }
 
-            // // 检查缓冲器位置是否超出电路面积
-            // if (CenterPointPosition.X < 0 || CenterPointPosition.Y < 0 || CenterPointPosition.X > width || CenterPointPosition.Y > length)
-            // {
-            //     int halfBufferWidth = BufferSize_Width / 2;
-            //     int halfBufferHeight = BufferSize_Height / 2;
+            // 检查缓冲器位置是否超出电路面积
+            if (CenterPointPosition.X < 0 || CenterPointPosition.Y < 0)
+            {
+                int halfBufferWidth = BufferSize_Width / 2;
+                int halfBufferHeight = BufferSize_Height / 2;
 
-            //     // 确保缓冲器位置在电路面积范围内
-            //     int adjustedX = Math.Max(halfBufferWidth, Math.Min(CenterPointPosition.X, width - halfBufferWidth));
-            //     int adjustedY = Math.Max(halfBufferHeight, Math.Min(CenterPointPosition.Y, length - halfBufferHeight));
-            //     CenterPointPosition.X = adjustedX;
-            //     CenterPointPosition.Y = adjustedY;
-            // }
+                // 确保缓冲器位置在电路面积范围内
+                int adjustedX = Math.Max(halfBufferWidth, CenterPointPosition.X);
+                int adjustedY = Math.Max(halfBufferHeight, CenterPointPosition.Y);
+                CenterPointPosition.X = adjustedX;
+                CenterPointPosition.Y = adjustedY;
+            }
 
             return CenterPointPosition;
         }
