@@ -35,6 +35,9 @@
             double minDelaySquared = upperCluster.Min(node => node.Delay);
             int gamma = (int)Math.Round(Math.Sqrt(maxDelaySquared - minDelaySquared));
 
+            // 限制搜索半径，避免过大的搜索范围
+            gamma = Math.Min(gamma, 10);
+
             // 初始候选中心点
             Node bestCenterPoint = new Node(initialX, initialY, 0, "BUF", BufferSize_width, BufferSize_height);
             double minDifferenceSum = double.MaxValue;

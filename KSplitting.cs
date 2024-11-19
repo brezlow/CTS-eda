@@ -73,24 +73,50 @@ namespace KSplittingNamespace
 
         public List<Node> ExecuteClustering()
         {
+            // 构建稀疏图
             var edges = BuildSparseGraph();
             Console.WriteLine($"图边数: {edges.Count}");
 
+            // 计算最小生成树（MST）
             var mstEdges = KruskalMST(edges);
             Console.WriteLine($"MST 边数: {mstEdges.Count}");
+
+            // 计算 EL 值
             double EL = CalculateEL();
             Console.WriteLine($"EL: {EL}");
 
+            // 切割边以形成聚类
             var clusters = CutEdges(mstEdges, EL);
             Console.WriteLine($"聚类数: {clusters.Count}");
+
+            // 检查并修复聚类
             clusters = CheckAndFixClusters(clusters);
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
-            // 计算各个聚类团的“中心点”，放置缓冲器
-            var (validClusters, buffers) = ValidateClustersByRC(clusters);
-            var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
+            // 如果聚类数小于等于 10，直接合并成一个大的聚类
+            if (clusters.Count <= maxFanout)
+            {
+                bool hebin = true;
+                var combinedCluster = clusters.SelectMany(cluster => cluster).ToList();
+                var combinedClusters = new LinkedList<List<Node>>();
+                combinedClusters.AddLast(combinedCluster);
 
-            return updatedBuffers;
+                // 检查 RC 负载并进行必要的分裂
+                var (validClusters, buffers) = ValidateClustersByRC(combinedClusters, hebin);
+                var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
+
+                // 如果经过检查和分裂后，buffer 数目仍然小于等于 10，直接返回
+                if (updatedBuffers.Count <= maxFanout)
+                {
+                    return updatedBuffers;
+                }
+            }
+
+            // 计算各个聚类团的“中心点”，放置缓冲器
+            var (finalValidClusters, finalBuffers) = ValidateClustersByRC(clusters);
+            var finalUpdatedBuffers = GenerateBufferInstances(finalValidClusters, finalBuffers, TotalBuffer);
+
+            return finalUpdatedBuffers;
         }
 
         private List<Edge> BuildSparseGraph()
@@ -117,10 +143,15 @@ namespace KSplittingNamespace
             var mstEdges = new List<Edge>();
             var unionFind = new UnionFind(nodes.Count);
 
+            // 确保 UnionFind 对象的容量足够大
+            foreach (var edge in edges)
+            {
+                unionFind.EnsureCapacity(Math.Max(edge.Node1.Id, edge.Node2.Id) + 1);
+            }
+
             // 并行构建 MST 树的边集合
             Parallel.ForEach(edges, edge =>
             {
-                unionFind.EnsureCapacity(Math.Max(edge.Node1.Id, edge.Node2.Id) + 1);
                 if (unionFind.Union(edge.Node1.Id, edge.Node2.Id))
                 {
                     lock (mstEdges)
@@ -463,14 +494,13 @@ namespace KSplittingNamespace
             return edges;
         }
 
-
         /// <summary>
         /// 检查每个聚类的RC负载是否符合要求，不符合则递归分裂，返回符合要求的聚类列表及其对应的buffer节点列表
         /// </summary>
         /// <param name="clusters">输入的聚类列表</param>
         /// <param name="depth">当前递归深度</param>
         /// <returns>元组：符合RC负载要求的聚类列表和对应的buffer节点列表</returns>
-        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, int depth = 0)
+        private (LinkedList<List<Node>>, List<Node>) ValidateClustersByRC(LinkedList<List<Node>> clusters, bool hebin = false)
         {
             const int MaxRecursionDepth = 10;
             double rc = NetUnitR * NetUnitC;
@@ -484,8 +514,22 @@ namespace KSplittingNamespace
             // 使用缓存字典，避免重复计算中心点
             var centerPointCache = new Dictionary<List<Node>, Node>();
 
-            Parallel.ForEach(clusters, cluster =>
+            var stack = new Stack<(List<Node> cluster, int depth)>();
+
+            foreach (var cluster in clusters)
             {
+                stack.Push((cluster, 0));
+            }
+
+            while (stack.Count > 0)
+            {
+                var (cluster, depth) = stack.Pop();
+
+                if (cluster == null || cluster.Count == 0)
+                {
+                    continue;
+                }
+
                 // 计算或获取缓存的中心点
                 Node buffer;
                 lock (centerPointCache)
@@ -500,7 +544,7 @@ namespace KSplittingNamespace
                 buffer.Delay = bufferDelay;
                 var bufferLoad = 0.5 * bufferDelay * rc;
 
-                if (bufferLoad <= maxNetRC)
+                if (bufferLoad <= maxNetRC || hebin)
                 {
                     // 加锁添加到 validClusters 和 correspondingBuffers
                     lock (validClustersLock) validClusters.AddLast(cluster);
@@ -508,23 +552,11 @@ namespace KSplittingNamespace
                 }
                 else if (depth < MaxRecursionDepth)
                 {
-                    Console.WriteLine($"聚类距离{bufferLoad}超过阈值，执行分裂");
-
                     // 分裂聚类并递归验证
                     var splitClusters = SplitCluster(cluster);
-                    var (checkedClusters, buffers) = ValidateClustersByRC(splitClusters, depth + 1);
-
-                    lock (validClustersLock)
+                    foreach (var splitCluster in splitClusters)
                     {
-                        foreach (var checkedCluster in checkedClusters)
-                        {
-                            validClusters.AddLast(checkedCluster);
-                        }
-                    }
-
-                    lock (buffersLock)
-                    {
-                        correspondingBuffers.AddRange(buffers);
+                        stack.Push((splitCluster, depth + 1));
                     }
                 }
                 else
@@ -533,11 +565,10 @@ namespace KSplittingNamespace
                     lock (validClustersLock) validClusters.AddLast(cluster);
                     lock (buffersLock) correspondingBuffers.Add(buffer);
                 }
-            });
+            }
 
             return (validClusters, correspondingBuffers);
         }
-
 
         /// <summary>
         /// 为每个有效聚类生成BufferInstance并返回对应的buffer节点列表
@@ -590,7 +621,25 @@ namespace KSplittingNamespace
             var clustering = new CenterPointNamespace.Clustering();
             double rc = NetUnitR * NetUnitC;
 
-            var CenterPointPosition = isBottomLayer ? clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height) : clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
+            Node CenterPointPosition;
+            if (isBottomLayer)
+            {
+                CenterPointPosition = clustering.CalculateBottomLevelCenterPoint(cluster, BufferSize_Width, BufferSize_Height);
+            }
+            else
+            {
+                if (cluster.Count < 2)
+                {
+                    // 如果聚类团节点数少于两个，返回该节点旁边一点距离的点
+                    var singleNode = cluster.First();
+                    CenterPointPosition = new Node(singleNode.X + 1, singleNode.Y + 1, 0, "BUF", BufferSize_Width, BufferSize_Height);
+
+                }
+                else
+                {
+                    CenterPointPosition = clustering.CalculateIntermediateLevelCenterPoint(cluster, rc, BufferSize_Width, BufferSize_Height);
+                }
+            }
 
             // 检查缓冲器位置是否与已有元件重叠
             if (IsOverlapping(CenterPointPosition))
@@ -601,6 +650,7 @@ namespace KSplittingNamespace
 
             return CenterPointPosition;
         }
+
         private Node FindNonOverlappingPosition(Node centerPoint)
         {
             int step = 10; // 步长，可以根据需要调整
