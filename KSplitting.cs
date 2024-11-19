@@ -649,7 +649,10 @@ namespace KSplittingNamespace
             }
 
             // 检查缓冲器位置是否超出电路面积
-            CenterPointPosition = EnsureWithinCircuitBounds(CenterPointPosition);
+            if(CenterPointPosition.X < 0 || CenterPointPosition.Y < 0 || CenterPointPosition.X > width || CenterPointPosition.Y > length)
+            {
+                CenterPointPosition = EnsureWithinCircuitBounds(CenterPointPosition);
+            }
 
             return CenterPointPosition;
         }
