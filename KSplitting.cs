@@ -93,7 +93,7 @@ namespace KSplittingNamespace
             clusters = CheckAndFixClusters(clusters);
             Console.WriteLine($"检查后聚类数:{clusters.Count}");
 
-            // 如果聚类数小于等于 10，直接合并成一个大的聚类
+            // 如果聚类数小于等于 max，直接合并成一个大的聚类
             if (clusters.Count <= maxFanout)
             {
                 bool hebin = true;
@@ -105,7 +105,7 @@ namespace KSplittingNamespace
                 var (validClusters, buffers) = ValidateClustersByRC(combinedClusters, hebin);
                 var updatedBuffers = GenerateBufferInstances(validClusters, buffers, TotalBuffer);
 
-                // 如果经过检查和分裂后，buffer 数目仍然小于等于 10，直接返回
+                // 如果经过检查和分裂后，buffer 数目仍然小于等于 max，直接返回
                 if (updatedBuffers.Count <= maxFanout)
                 {
                     return updatedBuffers;

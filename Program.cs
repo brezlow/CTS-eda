@@ -43,7 +43,7 @@ namespace edaContest
 
             // 开始第一层聚类
             // 创建 KSplittingClustering 实例
-            double alpha = 7.5; // 根据需要设置 alpha 值
+            double alpha = 10; // 根据需要设置 alpha 值
             int maxFanout = circuitData.MaxFanout;
             // 计算障碍物面积
             double obstacleArea = CircuitComponents.Sum(component => component.Area);
@@ -67,6 +67,7 @@ namespace edaContest
             // 循环进行聚类，直到得到最上一层聚类及 buffer 只有一个时结束聚类
             while (bottomBuffer.Count > 1)
             {
+                alpha = 7; // 根据需要设置 alpha 值
                 // 更新 triggers 为上一次聚类得到的 buffer
                 triggers = bottomBuffer;
 

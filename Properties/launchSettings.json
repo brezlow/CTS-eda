@@ -2,7 +2,7 @@
   "profiles": {
     "edaContest": {
       "commandName": "Project",
-      "commandLineArgs": " -def_file \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\problem.def\" -constraint \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\constraints.txt\" -output \"D:\\download\\edaContest\\edaCode\\public\\cts_problems\\problem2\\solution.def\""
+      "commandLineArgs": " -def_file \"problem/problem.def\" -constraint \"problem/constraints.txt\" -output \"problem/solution.def\""
     }
   }
 }
